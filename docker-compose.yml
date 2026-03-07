@@ -1,0 +1,234 @@
+version: '3.8'
+
+services:
+  # PostgreSQL for User Service
+  user-db:
+    image: postgres:18-alpine
+    container_name: user-database
+    environment:
+      POSTGRES_DB: user_service_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"
+    volumes:
+      - user-db-data:/var/lib/postgresql/data
+    networks:
+      - blog-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # PostgreSQL for Blog Service
+  blog-db:
+    image: postgres:18-alpine
+    container_name: blog-database
+    environment:
+      POSTGRES_DB: blog_service_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - blog-db-data:/var/lib/postgresql/data
+    networks:
+      - blog-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # User Service
+  user-service:
+    build:
+      context: ./backend/user-service
+      dockerfile: Dockerfile
+    container_name: user-service
+    environment:
+      SERVER_PORT: 8081
+      SPRING_DATASOURCE_URL: jdbc:postgresql://user-db:5432/user_service_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_MAIL_HOST: smtp.gmail.com
+      SPRING_MAIL_PORT: 587
+      SPRING_MAIL_USERNAME: sonvskt303@gmail.com
+      SPRING_MAIL_PASSWORD: skes mwnj exgf zbdt
+      JWT_SECRET: 5367566B59703373367639792F423F4528482B4D6251655468576D5A71347437
+      JWT_EXPIRATION: 86400000
+      APP_BASE_URL: http://localhost:8888
+    ports:
+      - "9001:8081"
+    depends_on:
+      user-db:
+        condition: service_healthy
+    networks:
+      - blog-network
+    volumes:
+      - ./uploads:/app/uploads
+    restart: unless-stopped
+
+  # Blog Service
+  blog-service:
+    build:
+      context: ./backend/blog-service
+      dockerfile: Dockerfile
+    container_name: blog-service
+    environment:
+      SERVER_PORT: 8082
+      SPRING_DATASOURCE_URL: jdbc:postgresql://blog-db:5432/blog_service_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      JWT_SECRET: 5367566B59703373367639792F423F4528482B4D6251655468576D5A71347437
+      FILE_SERVICE_URL: http://file-service:8083
+    ports:
+      - "8083:8082"
+    depends_on:
+      blog-db:
+        condition: service_healthy
+    networks:
+      - blog-network
+    volumes:
+      - ./uploads:/app/uploads
+    restart: unless-stopped
+
+  # PostgreSQL for File Service
+  file-db:
+    image: postgres:18-alpine
+    container_name: file-database
+    environment:
+      POSTGRES_DB: file_service_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5435:5432"
+    volumes:
+      - file-db-data:/var/lib/postgresql/data
+    networks:
+      - blog-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # SeaweedFS Master Server
+  seaweedfs-master:
+    image: chrislusf/seaweedfs:latest
+    container_name: seaweedfs-master
+    command: "master -ip=seaweedfs-master -port=9333 -mdir=/data"
+    ports:
+      - "9333:9333"
+    volumes:
+      - seaweedfs-master-data:/data
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+  # SeaweedFS Volume Server
+  seaweedfs-volume:
+    image: chrislusf/seaweedfs:latest
+    container_name: seaweedfs-volume
+    command: "volume -ip=seaweedfs-volume -port=8080 -mserver=seaweedfs-master:9333 -dir=/data"
+    ports:
+      - "8084:8080"
+    volumes:
+      - seaweedfs-volume-data:/data
+    depends_on:
+      - seaweedfs-master
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+  # SeaweedFS Filer
+  seaweedfs-filer:
+    image: chrislusf/seaweedfs:latest
+    container_name: seaweedfs-filer
+    command: "filer -ip=seaweedfs-filer -port=8888 -master=seaweedfs-master:9333"
+    ports:
+      - "8889:8888"
+    depends_on:
+      - seaweedfs-master
+      - seaweedfs-volume
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+  # File Service
+  file-service:
+    build:
+      context: ./backend/file-service
+      dockerfile: Dockerfile
+    container_name: file-service
+    environment:
+      SERVER_PORT: 8083
+      SPRING_DATASOURCE_URL: jdbc:postgresql://file-db:5432/file_service_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SEAWEEDFS_MASTER_URL: http://seaweedfs-master:9333
+      SEAWEEDFS_FILER_URL: http://seaweedfs-filer:8888
+      JWT_SECRET: 5367566B59703373367639792F423F4528482B4D6251655468576D5A71347437
+      JWT_EXPIRATION: 86400000
+    ports:
+      - "8085:8083"
+    depends_on:
+      file-db:
+        condition: service_healthy
+      seaweedfs-master:
+        condition: service_started
+      seaweedfs-filer:
+        condition: service_started
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: ./backend/api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    environment:
+      SERVER_PORT: 9000
+      USER_SERVICE_URL: http://user-service:8081
+      BLOG_SERVICE_URL: http://blog-service:8082
+      FILE_SERVICE_URL: http://file-service:8083
+    ports:
+      - "9000:9000"
+    depends_on:
+      - user-service
+      - blog-service
+      - file-service
+    networks:
+      - blog-network
+    volumes:
+      - ./backend/api-gateway/src/main/resources/application.yml:/app/application.yml
+      - ./backend/api-gateway/src/main/resources/application.yml:/app/config/application.yml
+    restart: unless-stopped
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    ports:
+      - "8888:80"
+    depends_on:
+      - api-gateway
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+networks:
+  blog-network:
+    driver: bridge
+
+volumes:
+  user-db-data:
+  blog-db-data:
+  file-db-data:
+  seaweedfs-master-data:
+  seaweedfs-volume-data:

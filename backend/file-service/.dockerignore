@@ -1,0 +1,32 @@
+target/
+!target/file-service-1.0.0.jar
+*.jar
+*.war
+*.ear
+*.class
+
+# IDE
+.idea
+.vscode
+*.iml
+*.iws
+*.ipr
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Logs
+*.log
+
+# Maven
+.mvn/
+mvnw
+mvnw.cmd
+
+# README
+README.md

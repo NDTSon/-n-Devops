@@ -1,0 +1,14 @@
+server:
+  port: 8083
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5435/file_service_db
+    username: postgres
+    password: postgres
+
+seaweedfs:
+  master:
+    url: http://localhost:9333
+  filer:
+    url: http://localhost:8889

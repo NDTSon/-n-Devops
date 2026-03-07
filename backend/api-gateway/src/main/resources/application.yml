@@ -1,0 +1,80 @@
+server:
+  port: ${SERVER_PORT:9000}
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOriginPatterns: 
+              - "*"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+              - HEAD
+              - PATCH
+            allowedHeaders: 
+              - "*"
+            exposedHeaders:
+              - Authorization
+              - Content-Disposition
+            maxAge: 3600
+      routes:
+        # User Service Routes
+        - id: user-service-auth
+          uri: ${USER_SERVICE_URL:http://user-service:8081}
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - RewritePath=/api/auth/(?<segment>.*), /api/auth/$\{segment}
+        
+        - id: user-service-users
+          uri: ${USER_SERVICE_URL:http://user-service:8081}
+          predicates:
+            - Path=/api/users/**
+          filters:
+            - RewritePath=/api/users/(?<segment>.*), /api/users/$\{segment}
+        
+        # Blog Service Routes
+        - id: blog-service-blogs
+          uri: ${BLOG_SERVICE_URL:http://blog-service:8082}
+          predicates:
+            - Path=/api/blogs/**
+          filters:
+            - RewritePath=/api/blogs/(?<segment>.*), /api/blogs/$\{segment}
+            - RewritePath=/api/blogs, /api/blogs
+        
+        # Comment Service Routes (also in blog-service)
+        - id: blog-service-comments
+          uri: ${BLOG_SERVICE_URL:http://blog-service:8082}
+          predicates:
+            - Path=/api/comments/**
+
+        # Static Uploads
+        - id: blog-service-uploads
+          uri: ${BLOG_SERVICE_URL:http://blog-service:8082}
+          predicates:
+            - Path=/api/uploads/**
+          filters:
+            - RewritePath=/api/uploads/(?<segment>.*), /uploads/$\{segment}
+        
+        # File Service Routes
+        - id: file-service-files
+          uri: ${FILE_SERVICE_URL:http://file-service:8083}
+          predicates:
+            - Path=/api/files/**
+          filters:
+            - RewritePath=/api/files/(?<segment>.*), /api/files/$\{segment}
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway

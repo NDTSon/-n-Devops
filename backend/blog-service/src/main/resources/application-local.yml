@@ -1,0 +1,12 @@
+server:
+  port: 8082
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5433/blog_service_db
+    username: postgres
+    password: postgres
+
+file:
+  service:
+    url: http://localhost:8083
