@@ -1,0 +1,170 @@
+stages:
+  - build
+  - test
+  - docker-build
+  - deploy
+
+variables:
+  # Speed up builds by caching maven repo locally
+  MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
+  # Use overlay2 driver for faster docker image building
+  DOCKER_DRIVER: overlay2
+
+# Cache dependencies to reduce build times between pipeline runs
+cache:
+  key: "$CI_COMMIT_REF_SLUG"
+  paths:
+    - .m2/repository/
+    - frontend/node_modules/
+
+# --- Templates (DRY Principle) ---
+# Java microservice build configuration
+.backend_build_template: &backend_build_def
+  image: maven:3.9.6-eclipse-temurin-17
+  stage: build
+  script:
+    - cd $SERVICE_DIR
+    - mvn clean package -DskipTests
+  artifacts:
+    # Retain the compiled .jar files for the docker build stage
+    paths:
+      - $SERVICE_DIR/target/*.jar
+    expire_in: 1 week
+
+# Java microservice test configuration
+.backend_test_template: &backend_test_def
+  image: maven:3.9.6-eclipse-temurin-17
+  stage: test
+  script:
+    - cd $SERVICE_DIR
+    - mvn test
+
+# Docker build and push configuration
+.docker_build_template: &docker_build_def
+  image: docker:24.0.5
+  stage: docker-build
+  services:
+    - docker:24.0.5-dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - cd $SERVICE_DIR
+    - docker build -t $CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_SHORT_SHA .
+    - docker push $CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_SHORT_SHA
+  rules:
+    # Only execute docker deployments from the main branch
+    - if: $CI_COMMIT_BRANCH == "main"
+
+# --- Build Stage ---
+build-user-service:
+  <<: *backend_build_def
+  variables:
+    SERVICE_DIR: "backend/user-service"
+
+build-blog-service:
+  <<: *backend_build_def
+  variables:
+    SERVICE_DIR: "backend/blog-service"
+
+build-file-service:
+  <<: *backend_build_def
+  variables:
+    SERVICE_DIR: "backend/file-service"
+
+build-frontend:
+  image: node:20-alpine
+  stage: build
+  script:
+    - cd frontend
+    - npm ci
+    - npm run build
+  artifacts:
+    # Retain the compiled frontend assets for the docker build stage
+    paths:
+      - frontend/dist/
+    expire_in: 1 week
+
+# --- Test Stage ---
+test-user-service:
+  <<: *backend_test_def
+  variables:
+    SERVICE_DIR: "backend/user-service"
+  dependencies:
+    - build-user-service
+
+test-blog-service:
+  <<: *backend_test_def
+  variables:
+    SERVICE_DIR: "backend/blog-service"
+  dependencies:
+    - build-blog-service
+
+test-file-service:
+  <<: *backend_test_def
+  variables:
+    SERVICE_DIR: "backend/file-service"
+  dependencies:
+    - build-file-service
+
+# --- Docker Build Stage ---
+docker-user-service:
+  <<: *docker_build_def
+  variables:
+    SERVICE_DIR: "backend/user-service"
+    IMAGE_NAME: "user-service"
+  # Link to the previous build stage's artifact
+  dependencies:
+    - build-user-service
+
+docker-blog-service:
+  <<: *docker_build_def
+  variables:
+    SERVICE_DIR: "backend/blog-service"
+    IMAGE_NAME: "blog-service"
+  dependencies:
+    - build-blog-service
+
+docker-file-service:
+  <<: *docker_build_def
+  variables:
+    SERVICE_DIR: "backend/file-service"
+    IMAGE_NAME: "file-service"
+  dependencies:
+    - build-file-service
+
+docker-frontend:
+  <<: *docker_build_def
+  variables:
+    SERVICE_DIR: "frontend"
+    IMAGE_NAME: "frontend"
+  dependencies:
+    - build-frontend
+
+# --- Deploy Stage ---
+deploy-to-server:
+  stage: deploy
+  image: alpine:latest
+  before_script:
+    # Install ssh-pass and openssh-client to connect to your server
+    - apk add --no-cache openssh-client
+    # Start SSH agent and add your private key
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    # Add server to known_hosts to prevent strict host checking errors
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-keyscan $SERVER_IP >> ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+  script:
+    # SSH into the server and run docker-compose up
+    - |
+      ssh $SERVER_USER@$SERVER_IP "
+        cd ~/app &&
+        echo '$CI_REGISTRY_PASSWORD' | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin &&
+        docker-compose down &&
+        docker-compose pull &&
+        docker-compose up -d
+      "
+  rules:
+    # Only deploy when code is pushed/merged to the main branch
+    - if: $CI_COMMIT_BRANCH == "main"
