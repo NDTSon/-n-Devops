@@ -155,7 +155,11 @@ deploy-to-server:
     - chmod 700 ~/.ssh
     - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
   script:
-    # SSH into the server and run docker-compose up
+    # 1. Create the deployment directory on the server if it doesn't exist
+    - ssh $SERVER_USER@$SERVER_IP "mkdir -p ~/app"
+    # 2. Securely copy the docker-compose.yml file from the repository to the server
+    - scp docker-compose.yml $SERVER_USER@$SERVER_IP:~/app/docker-compose.yml
+    # 3. SSH into the server and run docker-compose up
     - |
       ssh $SERVER_USER@$SERVER_IP "
         cd ~/app &&
