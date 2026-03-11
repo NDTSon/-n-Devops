@@ -161,8 +161,10 @@ deploy-to-server:
   script:
     # 1. Create the deployment directory on the server if it doesn't exist
     - ssh $SERVER_USER@$SERVER_IP "mkdir -p ~/app"
-    # 2. Securely copy the docker-compose.yml file from the repository to the server
-    - scp docker-compose.yml $SERVER_USER@$SERVER_IP:~/app/docker-compose.yml
+    # 2. Render docker-compose.yml with CI variables and copy to server
+    - |
+      export CI_REGISTRY_IMAGE="$CI_REGISTRY_IMAGE"
+      envsubst < docker-compose.yml | ssh $SERVER_USER@$SERVER_IP "cat > ~/app/docker-compose.yml"
     # 3. SSH into the server and run docker-compose up
     - |
       ssh $SERVER_USER@$SERVER_IP "

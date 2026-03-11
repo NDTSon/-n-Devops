@@ -43,9 +43,7 @@ services:
 
   # User Service
   user-service:
-    build:
-      context: ./backend/user-service
-      dockerfile: Dockerfile
+    image: $CI_REGISTRY_IMAGE/user-service:$CI_COMMIT_SHORT_SHA
     container_name: user-service
     environment:
       SERVER_PORT: 8081
@@ -72,9 +70,7 @@ services:
 
   # Blog Service
   blog-service:
-    build:
-      context: ./backend/blog-service
-      dockerfile: Dockerfile
+    image: $CI_REGISTRY_IMAGE/blog-service:$CI_COMMIT_SHORT_SHA
     container_name: blog-service
     environment:
       SERVER_PORT: 8082
@@ -158,9 +154,7 @@ services:
 
   # File Service
   file-service:
-    build:
-      context: ./backend/file-service
-      dockerfile: Dockerfile
+    image: $CI_REGISTRY_IMAGE/file-service:$CI_COMMIT_SHORT_SHA
     container_name: file-service
     environment:
       SERVER_PORT: 8083
@@ -188,9 +182,7 @@ services:
   # Nginx trong frontend container đóng vai trò reverse proxy trực tiếp đến từng service.
   # Khi 1 service hỏng, chỉ các route của service đó bị ảnh hưởng, các service còn lại vẫn hoạt động bình thường.
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: $CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHORT_SHA
     container_name: frontend
     ports:
       - "5173:80"
