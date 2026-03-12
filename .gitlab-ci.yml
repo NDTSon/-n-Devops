@@ -193,7 +193,7 @@ deploy-to-backup-server:
     - ssh -p 12917 quang@0.tcp.ap.ngrok.io "mkdir -p ~/app"
     - |
       export CI_REGISTRY_IMAGE="$CI_REGISTRY_IMAGE"
-      envsubst < docker-compose.yml | ssh -p 12917 quang@0.tcp.ap.ngrok.io "cat > ~/app/docker-compose.yml"
+      envsubst < docker-compose.yml | ssh -p 19116 quang@0.tcp.ap.ngrok.io "cat > ~/app/docker-compose.yml"
     - |
       ssh -p 12917 quang@0.tcp.ap.ngrok.io "
         cd ~/app &&
