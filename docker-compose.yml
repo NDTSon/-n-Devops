@@ -10,7 +10,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "${USER_DB_PORT:-5434}:5432"
+      - "5434:5432"
     volumes:
       - user-db-data:/var/lib/postgresql/data
     networks:
@@ -30,7 +30,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "${BLOG_DB_PORT:-5433}:5432"
+      - "5433:5432"
     volumes:
       - blog-db-data:/var/lib/postgresql/data
     networks:
@@ -56,9 +56,9 @@ services:
       SPRING_MAIL_PASSWORD: skes mwnj exgf zbdt
       JWT_SECRET: 5367566B59703373367639792F423F4528482B4D6251655468576D5A71347437
       JWT_EXPIRATION: 86400000
-      APP_BASE_URL: http://localhost:${FRONTEND_PORT:-5173}
+      APP_BASE_URL: http://localhost:5173
     ports:
-      - "${USER_SERVICE_PORT:-9001}:8081"
+      - "9001:8081"
     depends_on:
       user-db:
         condition: service_healthy
@@ -80,7 +80,7 @@ services:
       JWT_SECRET: 5367566B59703373367639792F423F4528482B4D6251655468576D5A71347437
       FILE_SERVICE_URL: http://file-service:8083
     ports:
-      - "${BLOG_SERVICE_PORT:-8083}:8082"
+      - "8083:8082"
     depends_on:
       blog-db:
         condition: service_healthy
@@ -99,7 +99,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "${FILE_DB_PORT:-5435}:5432"
+      - "5435:5432"
     volumes:
       - file-db-data:/var/lib/postgresql/data
     networks:
@@ -116,7 +116,7 @@ services:
     container_name: seaweedfs-master
     command: "master -ip=seaweedfs-master -port=9333 -mdir=/data"
     ports:
-      - "${SEAWEEDFS_MASTER_PORT:-9333}:9333"
+      - "9333:9333"
     volumes:
       - seaweedfs-master-data:/data
     networks:
@@ -129,7 +129,7 @@ services:
     container_name: seaweedfs-volume
     command: "volume -ip=seaweedfs-volume -port=8080 -mserver=seaweedfs-master:9333 -dir=/data"
     ports:
-      - "${SEAWEEDFS_VOLUME_PORT:-8084}:8080"
+      - "8084:8080"
     volumes:
       - seaweedfs-volume-data:/data
     depends_on:
@@ -144,7 +144,7 @@ services:
     container_name: seaweedfs-filer
     command: "filer -ip=seaweedfs-filer -port=8888 -master=seaweedfs-master:9333"
     ports:
-      - "${SEAWEEDFS_FILER_PORT:-8889}:8888"
+      - "8889:8888"
     depends_on:
       - seaweedfs-master
       - seaweedfs-volume
@@ -166,7 +166,7 @@ services:
       JWT_SECRET: 5367566B59703373367639792F423F4528482B4D6251655468576D5A71347437
       JWT_EXPIRATION: 86400000
     ports:
-      - "${FILE_SERVICE_PORT:-8085}:8083"
+      - "8085:8083"
     depends_on:
       file-db:
         condition: service_healthy
@@ -185,7 +185,7 @@ services:
     image: $CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHORT_SHA
     container_name: frontend
     ports:
-      - "${FRONTEND_PORT:-5173}:80"
+      - "5173:80"
     depends_on:
       - user-service
       - blog-service
