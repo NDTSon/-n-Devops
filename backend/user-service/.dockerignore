@@ -1,4 +1,5 @@
 target/
+!target/user-service-1.0.0.jar
 .mvn/
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
