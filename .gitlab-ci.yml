@@ -5,8 +5,6 @@ stages:
   - deploy
 
 variables:
-  # Speed up builds by caching maven repo locally
-  MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
   # Use overlay2 driver for faster docker image building
   DOCKER_DRIVER: overlay2
 
@@ -14,8 +12,7 @@ variables:
 cache:
   key: "$CI_COMMIT_REF_SLUG"
   paths:
-    - .m2/repository/
-    - frontend/node_modules/
+    - /root/.m2/repository/
 
 # --- Templates (DRY Principle) ---
 # Java microservice build configuration
@@ -24,7 +21,7 @@ cache:
   stage: build
   script:
     - cd $SERVICE_DIR
-    - mvn clean package -DskipTests
+    - mvn package -DskipTests
   artifacts:
     # Retain the compiled .jar files for the docker build stage
     paths:
@@ -79,6 +76,10 @@ build-file-service:
 build-frontend:
   image: node:20-alpine
   stage: build
+  cache:
+    key: "$CI_COMMIT_REF_SLUG"
+    paths:
+      - frontend/node_modules/
   script:
     - cd frontend
     - npm ci
