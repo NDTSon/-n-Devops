@@ -5,8 +5,8 @@ stages:
   - deploy
 
 variables:
-  # Speed up builds by caching maven repo locally across microservices
-  MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
+  # Speed up builds by caching maven repo locally
+  MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
   # Use overlay2 driver for faster docker image building
   DOCKER_DRIVER: overlay2
 
@@ -46,12 +46,14 @@ cache:
   services:
     - docker:24.0.5-dind
   variables:
+    # Use TLS for Docker-in-Docker
     DOCKER_TLS_CERTDIR: "/certs"
     DOCKER_HOST: tcp://docker:2376
   before_script:
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
   script:
-    - cd $SERVICE_DIR && docker build -t $CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_SHORT_SHA .
+    - cd $SERVICE_DIR
+    - docker build -t $CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_SHORT_SHA .
     - docker push $CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_SHORT_SHA
   rules:
     # Only execute docker deployments from the main branch
@@ -76,10 +78,6 @@ build-file-service:
 build-frontend:
   image: node:20-alpine
   stage: build
-  cache:
-    key: "$CI_COMMIT_REF_SLUG"
-    paths:
-      - frontend/node_modules/
   script:
     - cd frontend
     - npm ci
@@ -143,88 +141,39 @@ docker-frontend:
   variables:
     SERVICE_DIR: "frontend"
     IMAGE_NAME: "frontend"
-  before_script:
-    - if [ -d "$SERVICE_DIR/dist" ]; then cp -r $SERVICE_DIR/dist/ $SERVICE_DIR/ || true; fi
   dependencies:
     - build-frontend
 
 # --- Deploy Stage ---
-# deploy-to-server:
-#   stage: deploy
-#   image: alpine:latest
-#   before_script:
-#     # Install ssh-pass, openssh-client and envsubst for variable substitution
-#     # - apk add --no-cache openssh-client gettext
-#     # Start SSH agent and add your private key
-#     - eval $(ssh-agent -s)
-#     - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
-#     # Disable strict host checking to prevent SSH interactive prompts
-#     - mkdir -p ~/.ssh
-#     - chmod 700 ~/.ssh
-#     - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
-#   script:
-#     # Create the deployment directory on the server if it doesn't exist
-#     - ssh $SERVER_USER@$SERVER_IP "mkdir -p ~/app"
-#     # Render docker-compose.yml with CI variables and copy to server
-#     - |
-#       export CI_REGISTRY_IMAGE="$CI_REGISTRY_IMAGE"
-#       envsubst < docker-compose.yml | ssh $SERVER_USER@$SERVER_IP "cat > ~/app/docker-compose.yml"
-#     # SSH into the server and run docker-compose up
-#     - |
-#       ssh $SERVER_USER@$SERVER_IP "
-#         export USER_DB_PORT=5434
-#         export BLOG_DB_PORT=5433
-#         export FILE_DB_PORT=5435
-#         export USER_SERVICE_PORT=9001
-#         export BLOG_SERVICE_PORT=8083
-#         export FILE_SERVICE_PORT=8085
-#         export SEAWEEDFS_MASTER_PORT=9333
-#         export SEAWEEDFS_VOLUME_PORT=8084
-#         export SEAWEEDFS_FILER_PORT=8889
-#         export FRONTEND_PORT=5173
-#         cd ~/app &&
-#         echo '$CI_REGISTRY_PASSWORD' | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin &&
-#         sudo docker-compose down &&
-#         sudo docker-compose pull &&
-#         sudo docker-compose up -d
-#       "
-#   rules:
-#     # Only deploy when code is pushed/merged to the main branch
-#     - if: $CI_COMMIT_BRANCH == "main"
-
-deploy-to-backup-server:
+deploy-to-server:
   stage: deploy
   image: alpine:latest
   before_script:
+    # Install ssh-pass, openssh-client and envsubst for variable substitution
     - apk add --no-cache openssh-client gettext
+    # Start SSH agent and add your private key
     - eval $(ssh-agent -s)
     - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    # Disable strict host checking to prevent SSH interactive prompts
     - mkdir -p ~/.ssh
     - chmod 700 ~/.ssh
     - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
   script:
-    # deploy to wsl2 backup server via ngrok tunnel.
-    - ssh -p 19116 quang@0.tcp.ap.ngrok.io "mkdir -p ~/app"
+    # Create the deployment directory on the server if it doesn't exist
+    - ssh $SERVER_USER@$SERVER_IP "mkdir -p ~/app"
+    # Render docker-compose.yml with CI variables and copy to server
     - |
       export CI_REGISTRY_IMAGE="$CI_REGISTRY_IMAGE"
-      envsubst < docker-compose.yml | ssh -p 19116 quang@0.tcp.ap.ngrok.io "cat > ~/app/docker-compose.yml"
+      envsubst < docker-compose.yml | ssh $SERVER_USER@$SERVER_IP "cat > ~/app/docker-compose.yml"
+    # SSH into the server and run docker-compose up
     - |
-      ssh -p 19116 quang@0.tcp.ap.ngrok.io "
-        export USER_DB_PORT=5444
-        export BLOG_DB_PORT=5443
-        export FILE_DB_PORT=5445
-        export USER_SERVICE_PORT=9002
-        export BLOG_SERVICE_PORT=8093
-        export FILE_SERVICE_PORT=8095
-        export SEAWEEDFS_MASTER_PORT=9334
-        export SEAWEEDFS_VOLUME_PORT=8094
-        export SEAWEEDFS_FILER_PORT=8890
-        export FRONTEND_PORT=5174
+      ssh $SERVER_USER@$SERVER_IP "
         cd ~/app &&
         echo '$CI_REGISTRY_PASSWORD' | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin &&
-        docker-compose down &&
-        docker-compose pull &&
-        docker-compose up -d
+        sudo docker-compose down &&
+        sudo docker-compose pull &&
+        sudo docker-compose up -d
       "
   rules:
+    # Only deploy when code is pushed/merged to the main branch
     - if: $CI_COMMIT_BRANCH == "main"
