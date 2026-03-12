@@ -46,15 +46,15 @@ cache:
   services:
     - docker:24.0.5-dind
   variables:
-    # Use TLS for Docker-in-Docker
     DOCKER_TLS_CERTDIR: "/certs"
     DOCKER_HOST: tcp://docker:2376
   before_script:
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
   script:
-    # Give the docker daemon permission to read artifacts downloaded by gitlab-runner
-    - chmod -R +r $SERVICE_DIR/target
+    # Ensure the artifact is explicitly copied into the local context before docker build runs
+    - if [ -d "$SERVICE_DIR/target" ]; then cp $SERVICE_DIR/target/*.jar $SERVICE_DIR/ || true; fi
     - cd $SERVICE_DIR
+    # Modify the build command to allow finding the jar either in /target or the current dir
     - docker build -t $CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_SHORT_SHA .
     - docker push $CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_SHORT_SHA
   rules:
