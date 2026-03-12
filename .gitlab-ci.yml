@@ -52,6 +52,8 @@ cache:
   before_script:
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
   script:
+    # Give the docker daemon permission to read artifacts downloaded by gitlab-runner
+    - chmod -R +r $SERVICE_DIR/target
     - cd $SERVICE_DIR
     - docker build -t $CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_SHORT_SHA .
     - docker push $CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_SHORT_SHA
@@ -190,12 +192,12 @@ deploy-to-backup-server:
     - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
   script:
     # deploy to wsl2 backup server via ngrok tunnel.
-    - ssh -p 12917 quang@0.tcp.ap.ngrok.io "mkdir -p ~/app"
+    - ssh -p 19116 quang@0.tcp.ap.ngrok.io "mkdir -p ~/app"
     - |
       export CI_REGISTRY_IMAGE="$CI_REGISTRY_IMAGE"
       envsubst < docker-compose.yml | ssh -p 19116 quang@0.tcp.ap.ngrok.io "cat > ~/app/docker-compose.yml"
     - |
-      ssh -p 12917 quang@0.tcp.ap.ngrok.io "
+      ssh -p 19116 quang@0.tcp.ap.ngrok.io "
         cd ~/app &&
         echo '$CI_REGISTRY_PASSWORD' | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin &&
         sudo docker-compose down &&
