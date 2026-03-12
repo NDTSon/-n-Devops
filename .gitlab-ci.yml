@@ -177,3 +177,30 @@ deploy-to-server:
   rules:
     # Only deploy when code is pushed/merged to the main branch
     - if: $CI_COMMIT_BRANCH == "main"
+
+deploy-to-backup-server:
+  stage: deploy
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache openssh-client gettext
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
+  script:
+    # deploy to wsl2 backup server via ngrok tunnel.
+    - ssh -p 12917 quang@0.tcp.ap.ngrok.io "mkdir -p ~/app"
+    - |
+      export CI_REGISTRY_IMAGE="$CI_REGISTRY_IMAGE"
+      envsubst < docker-compose.yml | ssh -p 12917 quang@0.tcp.ap.ngrok.io "cat > ~/app/docker-compose.yml"
+    - |
+      ssh -p 12917 quang@0.tcp.ap.ngrok.io "
+        cd ~/app &&
+        echo '$CI_REGISTRY_PASSWORD' | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin &&
+        sudo docker-compose down &&
+        sudo docker-compose pull &&
+        sudo docker-compose up -d
+      "
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
