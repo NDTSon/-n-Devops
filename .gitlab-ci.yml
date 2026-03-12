@@ -44,16 +44,17 @@ cache:
   image: docker:24.0.5
   stage: docker-build
   services:
-    - docker:24.0.5-dind
+    - name: docker:24.0.5-dind
+      alias: docker
   variables:
-    # Use TLS for Docker-in-Docker
-    DOCKER_TLS_CERTDIR: "/certs"
     DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_TLS_VERIFY: 1
+    DOCKER_CERT_PATH: "/certs/client"
   before_script:
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
   script:
-    - cd $SERVICE_DIR
-    - docker build -t $CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_SHORT_SHA .
+    - docker build -t $CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_SHORT_SHA -f $SERVICE_DIR/Dockerfile $SERVICE_DIR
     - docker push $CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_SHORT_SHA
   rules:
     # Only execute docker deployments from the main branch
@@ -116,33 +117,24 @@ docker-user-service:
   variables:
     SERVICE_DIR: "backend/user-service"
     IMAGE_NAME: "user-service"
-  # Link to the previous build stage's artifact
-  dependencies:
-    - build-user-service
 
 docker-blog-service:
   <<: *docker_build_def
   variables:
     SERVICE_DIR: "backend/blog-service"
     IMAGE_NAME: "blog-service"
-  dependencies:
-    - build-blog-service
 
 docker-file-service:
   <<: *docker_build_def
   variables:
     SERVICE_DIR: "backend/file-service"
     IMAGE_NAME: "file-service"
-  dependencies:
-    - build-file-service
 
 docker-frontend:
   <<: *docker_build_def
   variables:
     SERVICE_DIR: "frontend"
     IMAGE_NAME: "frontend"
-  dependencies:
-    - build-frontend
 
 # --- Deploy Stage ---
 deploy-to-server:
