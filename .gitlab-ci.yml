@@ -1,0 +1,251 @@
+stages:
+  - build
+  - test
+  - docker-build
+  - deploy
+
+# --- Change Detection Templates ---
+.user-service-changes:
+  rules:
+    - changes:
+        - backend/user-service/**/*
+        - .gitlab-ci.yml
+        - docker-compose.yml
+
+.blog-service-changes:
+  rules:
+    - changes:
+        - backend/blog-service/**/*
+        - .gitlab-ci.yml
+        - docker-compose.yml
+
+.file-service-changes:
+  rules:
+    - changes:
+        - backend/file-service/**/*
+        - .gitlab-ci.yml
+        - docker-compose.yml
+
+.frontend-changes:
+  rules:
+    - changes:
+        - frontend/**/*
+        - .gitlab-ci.yml
+        - docker-compose.yml
+
+variables:
+  DOCKER_DRIVER: overlay2
+  # FIX 1: Tell Maven to use a directory INSIDE the project folder
+  MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
+
+# FIX 2: Update the global cache to point to the new internal path
+cache:
+  key: "$CI_COMMIT_REF_SLUG"
+  paths:
+    - .m2/repository/
+
+# --- Templates (DRY Principle) ---
+.backend_build_template: &backend_build_def
+  image: maven:3.9.6-eclipse-temurin-17
+  stage: build
+  script:
+    - cd $SERVICE_DIR
+    # Maven will now automatically use the path defined in MAVEN_OPTS
+    - mvn package -DskipTests
+  artifacts:
+    paths:
+      - $SERVICE_DIR/target/*.jar
+    expire_in: 1 week
+
+.backend_test_template: &backend_test_def
+  image: maven:3.9.6-eclipse-temurin-17
+  stage: test
+  script:
+    - cd $SERVICE_DIR
+    - mvn test
+
+.docker_build_template: &docker_build_def
+  image: docker:24.0.5
+  stage: docker-build
+  services:
+    - name: docker:24.0.5-dind
+      alias: docker
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_TLS_VERIFY: 1
+    DOCKER_CERT_PATH: "/certs/client"
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - docker build -t $CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_SHORT_SHA -t $CI_REGISTRY_IMAGE/$IMAGE_NAME:latest -f $SERVICE_DIR/Dockerfile $SERVICE_DIR
+    - docker push $CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_SHORT_SHA
+    - docker push $CI_REGISTRY_IMAGE/$IMAGE_NAME:latest
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+
+# --- Build Stage ---
+build-user-service:
+  <<: *backend_build_def
+  extends: .user-service-changes
+  variables:
+    SERVICE_DIR: "backend/user-service"
+
+build-blog-service:
+  <<: *backend_build_def
+  extends: .blog-service-changes
+  variables:
+    SERVICE_DIR: "backend/blog-service"
+
+build-file-service:
+  <<: *backend_build_def
+  extends: .file-service-changes
+  variables:
+    SERVICE_DIR: "backend/file-service"
+
+build-frontend:
+  image: node:20-alpine
+  stage: build
+  extends: .frontend-changes
+  # Frontend uses its own cache to avoid overwriting/conflicting with Java cache
+  cache:
+    key: "node-$CI_COMMIT_REF_SLUG"
+    paths:
+      - frontend/node_modules/
+  script:
+    - cd frontend
+    - npm ci
+    - npm run build
+  artifacts:
+    paths:
+      - frontend/dist/
+    expire_in: 1 week
+
+# --- Test Stage ---
+test-user-service:
+  <<: *backend_test_def
+  extends: .user-service-changes
+  variables:
+    SERVICE_DIR: "backend/user-service"
+  dependencies:
+    - build-user-service
+
+test-blog-service:
+  <<: *backend_test_def
+  extends: .blog-service-changes
+  variables:
+    SERVICE_DIR: "backend/blog-service"
+  dependencies:
+    - build-blog-service
+
+test-file-service:
+  <<: *backend_test_def
+  extends: .file-service-changes
+  variables:
+    SERVICE_DIR: "backend/file-service"
+  dependencies:
+    - build-file-service
+
+# --- Docker Build Stage ---
+docker-user-service:
+  <<: *docker_build_def
+  variables:
+    SERVICE_DIR: "backend/user-service"
+    IMAGE_NAME: "user-service"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      changes:
+        - backend/user-service/**/*
+        - .gitlab-ci.yml
+        - docker-compose.yml
+
+docker-blog-service:
+  <<: *docker_build_def
+  variables:
+    SERVICE_DIR: "backend/blog-service"
+    IMAGE_NAME: "blog-service"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      changes:
+        - backend/blog-service/**/*
+        - .gitlab-ci.yml
+        - docker-compose.yml
+
+docker-file-service:
+  <<: *docker_build_def
+  variables:
+    SERVICE_DIR: "backend/file-service"
+    IMAGE_NAME: "file-service"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      changes:
+        - backend/file-service/**/*
+        - .gitlab-ci.yml
+        - docker-compose.yml
+
+docker-frontend:
+  <<: *docker_build_def
+  variables:
+    SERVICE_DIR: "frontend"
+    IMAGE_NAME: "frontend"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      changes:
+        - frontend/**/*
+        - .gitlab-ci.yml
+        - docker-compose.yml
+
+# --- Deploy Stage Template ---
+.deploy_template:
+  stage: deploy
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache openssh-client gettext
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
+  script:
+    - ssh $SERVER_USER@$SERVER_IP "mkdir -p ~/app"
+    - |
+      # Export variables for envsubst to use
+      export CI_REGISTRY_IMAGE="$CI_REGISTRY_IMAGE"
+      export USER_TAG="${USER_TAG:-latest}"
+      export BLOG_TAG="${BLOG_TAG:-latest}"
+      export FILE_TAG="${FILE_TAG:-latest}"
+      export FRONTEND_TAG="${FRONTEND_TAG:-latest}"
+      envsubst < docker-compose.yml | ssh $SERVER_USER@$SERVER_IP "cat > ~/app/docker-compose.yml"
+    - |
+      ssh $SERVER_USER@$SERVER_IP "
+        cd ~/app &&
+        echo '$CI_REGISTRY_PASSWORD' | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin &&
+        sudo docker compose pull $SERVICE_NAME &&
+        sudo docker compose up -d $SERVICE_NAME --remove-orphans
+      "
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+
+deploy-user-service:
+  extends: [.deploy_template, .user-service-changes]
+  variables:
+    SERVICE_NAME: "user-service"
+    USER_TAG: "$CI_COMMIT_SHORT_SHA"
+
+deploy-blog-service:
+  extends: [.deploy_template, .blog-service-changes]
+  variables:
+    SERVICE_NAME: "blog-service"
+    BLOG_TAG: "$CI_COMMIT_SHORT_SHA"
+
+deploy-file-service:
+  extends: [.deploy_template, .file-service-changes]
+  variables:
+    SERVICE_NAME: "file-service"
+    FILE_TAG: "$CI_COMMIT_SHORT_SHA"
+
+deploy-frontend:
+  extends: [.deploy_template, .frontend-changes]
+  variables:
+    SERVICE_NAME: "frontend"
+    FRONTEND_TAG: "$CI_COMMIT_SHORT_SHA"
