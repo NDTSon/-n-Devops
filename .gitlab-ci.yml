@@ -194,8 +194,8 @@ docker-frontend:
         - .gitlab-ci.yml
         - docker-compose.yml
 
-# --- Deploy Stage ---
-deploy-to-server:
+# --- Deploy Stage Template ---
+.deploy_template:
   stage: deploy
   image: alpine:latest
   before_script:
@@ -208,15 +208,38 @@ deploy-to-server:
   script:
     - ssh $SERVER_USER@$SERVER_IP "mkdir -p ~/app"
     - |
-      export CI_REGISTRY_IMAGE="$CI_REGISTRY_IMAGE"
+      # Substitute only the relevant tag for this service
       envsubst < docker-compose.yml | ssh $SERVER_USER@$SERVER_IP "cat > ~/app/docker-compose.yml"
     - |
       ssh $SERVER_USER@$SERVER_IP "
         cd ~/app &&
         echo '$CI_REGISTRY_PASSWORD' | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin &&
-        sudo docker compose down --remove-orphans &&
-        sudo docker compose pull &&
-        sudo docker compose up -d --force-recreate --remove-orphans
+        sudo docker compose pull $SERVICE_NAME &&
+        sudo docker compose up -d $SERVICE_NAME --remove-orphans
       "
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
+
+deploy-user-service:
+  extends: [.deploy_template, .user-service-changes]
+  variables:
+    SERVICE_NAME: "user-service"
+    USER_TAG: "$CI_COMMIT_SHORT_SHA"
+
+deploy-blog-service:
+  extends: [.deploy_template, .blog-service-changes]
+  variables:
+    SERVICE_NAME: "blog-service"
+    BLOG_TAG: "$CI_COMMIT_SHORT_SHA"
+
+deploy-file-service:
+  extends: [.deploy_template, .file-service-changes]
+  variables:
+    SERVICE_NAME: "file-service"
+    FILE_TAG: "$CI_COMMIT_SHORT_SHA"
+
+deploy-frontend:
+  extends: [.deploy_template, .frontend-changes]
+  variables:
+    SERVICE_NAME: "frontend"
+    FRONTEND_TAG: "$CI_COMMIT_SHORT_SHA"
