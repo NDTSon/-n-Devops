@@ -18,6 +18,11 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class User {
+    // Constructor for CI testing
+    public User(String username) {
+        this.username = username;
+        System.out.println("Hello from User Service CI test");
+    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
