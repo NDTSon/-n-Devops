@@ -198,8 +198,8 @@ deploy-to-server:
       ssh $SERVER_USER@$SERVER_IP "
         cd ~/app &&
         echo '$CI_REGISTRY_PASSWORD' | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin &&
-        sudo docker-compose pull &&
-        sudo docker-compose up -d --remove-orphans
+        sudo docker compose pull &&
+        sudo docker compose up -d --remove-orphans
       "
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
