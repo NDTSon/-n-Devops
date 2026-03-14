@@ -214,6 +214,7 @@ deploy-to-server:
       ssh $SERVER_USER@$SERVER_IP "
         cd ~/app &&
         echo '$CI_REGISTRY_PASSWORD' | docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin &&
+        sudo docker compose down --remove-orphans &&
         sudo docker compose pull &&
         sudo docker compose up -d --force-recreate --remove-orphans
       "
