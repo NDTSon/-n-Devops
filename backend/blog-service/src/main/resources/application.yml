@@ -4,16 +4,16 @@ server:
 spring:
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:local}
-  
+
   application:
     name: blog-service
-  
+
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://blog-db:5432/blog_service_db}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
     password: ${SPRING_DATASOURCE_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
-  
+
   jpa:
     hibernate:
       ddl-auto: update
@@ -22,7 +22,7 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
-  
+
   servlet:
     multipart:
       max-file-size: 10MB
@@ -46,4 +46,10 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true

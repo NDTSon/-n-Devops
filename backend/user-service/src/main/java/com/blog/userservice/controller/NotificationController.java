@@ -55,7 +55,6 @@ public class NotificationController {
             @PathVariable UUID id,
             @RequestHeader("X-User-Id") String userIdStr) {
         try {
-            UUID userId = UUID.fromString(userIdStr);
             notificationService.markAsRead(id);
             return ResponseEntity.ok(Map.of("message", "Notification marked as read"));
         } catch (Exception e) {
