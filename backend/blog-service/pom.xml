@@ -51,6 +51,11 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
         
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+        
         <!-- Spring Cloud OpenFeign -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>

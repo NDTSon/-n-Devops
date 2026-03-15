@@ -47,6 +47,7 @@ services:
       dockerfile: Dockerfile
     container_name: user-service
     environment:
+      SPRING_PROFILES_ACTIVE: docker
       SERVER_PORT: 8081
       SPRING_DATASOURCE_URL: jdbc:postgresql://user-db:5432/user_service_db
       SPRING_DATASOURCE_USERNAME: postgres
@@ -63,6 +64,16 @@ services:
     depends_on:
       user-db:
         condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -qO- http://127.0.0.1:8081/actuator/health > /dev/null || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
     networks:
       - blog-network
     volumes:
@@ -77,6 +88,7 @@ services:
       dockerfile: Dockerfile
     container_name: blog-service
     environment:
+      SPRING_PROFILES_ACTIVE: docker
       SERVER_PORT: 8082
       SPRING_DATASOURCE_URL: jdbc:postgresql://blog-db:5432/blog_service_db
       SPRING_DATASOURCE_USERNAME: postgres
@@ -88,6 +100,16 @@ services:
     depends_on:
       blog-db:
         condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -qO- http://127.0.0.1:8082/actuator/health > /dev/null || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
     networks:
       - blog-network
     volumes:
@@ -164,6 +186,7 @@ services:
       dockerfile: Dockerfile
     container_name: file-service
     environment:
+      SPRING_PROFILES_ACTIVE: docker
       SERVER_PORT: 8083
       SPRING_DATASOURCE_URL: jdbc:postgresql://file-db:5432/file_service_db
       SPRING_DATASOURCE_USERNAME: postgres
@@ -181,6 +204,16 @@ services:
         condition: service_started
       seaweedfs-filer:
         condition: service_started
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -qO- http://127.0.0.1:8083/actuator/health > /dev/null || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
     networks:
       - blog-network
     restart: unless-stopped
@@ -197,9 +230,46 @@ services:
     ports:
       - "5173:80"
     depends_on:
-      - user-service
-      - blog-service
-      - file-service
+      user-service:
+        condition: service_healthy
+      blog-service:
+        condition: service_healthy
+      file-service:
+        condition: service_healthy
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+  # Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+    ports:
+      - "9090:9090"
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+  # Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - prometheus
     networks:
       - blog-network
     restart: unless-stopped
@@ -214,3 +284,5 @@ volumes:
   file-db-data:
   seaweedfs-master-data:
   seaweedfs-volume-data:
+  prometheus-data:
+  grafana-data:
