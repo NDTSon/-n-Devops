@@ -209,17 +209,26 @@ docker-frontend:
     - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
   script:
     - ssh $SERVER_USER@$SERVER_IP "mkdir -p ~/app"
-    - |
-      # Export variables for envsubst to use
-      export CI_REGISTRY_IMAGE="$CI_REGISTRY_IMAGE"
-      export USER_TAG="${USER_TAG:-latest}"
-      export BLOG_TAG="${BLOG_TAG:-latest}"
-      export FILE_TAG="${FILE_TAG:-latest}"
-      export FRONTEND_TAG="${FRONTEND_TAG:-latest}"
-      envsubst < docker-compose.yml | ssh $SERVER_USER@$SERVER_IP "cat > ~/app/docker-compose.yml"
+    - scp docker-compose.yml $SERVER_USER@$SERVER_IP:~/app/docker-compose.yml
     - |
       ssh $SERVER_USER@$SERVER_IP "
         cd ~/app &&
+        
+        # Create or overwrite the .env file securely
+        echo 'CI_REGISTRY_IMAGE=$CI_REGISTRY_IMAGE' > .env &&
+        echo 'USER_TAG=${USER_TAG:-latest}' >> .env &&
+        echo 'BLOG_TAG=${BLOG_TAG:-latest}' >> .env &&
+        echo 'FILE_TAG=${FILE_TAG:-latest}' >> .env &&
+        echo 'FRONTEND_TAG=${FRONTEND_TAG:-latest}' >> .env &&
+        echo 'POSTGRES_USER=$POSTGRES_USER' >> .env &&
+        echo 'POSTGRES_PASSWORD=$POSTGRES_PASSWORD' >> .env &&
+        echo 'JWT_SECRET=$JWT_SECRET' >> .env &&
+        echo 'JWT_EXPIRATION=$JWT_EXPIRATION' >> .env &&
+        echo 'MAIL_USERNAME=$MAIL_USERNAME' >> .env &&
+        echo 'MAIL_PASSWORD=$MAIL_PASSWORD' >> .env &&
+        echo 'GRAFANA_PASSWORD=$GRAFANA_PASSWORD' >> .env &&
+        
+        # Login and deploy
         echo '$CI_REGISTRY_PASSWORD' | sudo docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin &&
         sudo docker compose pull $SERVICE_NAME &&
         sudo docker compose up -d --no-deps $SERVICE_NAME
@@ -228,25 +237,49 @@ docker-frontend:
     - if: $CI_COMMIT_BRANCH == "main"
 
 deploy-user-service:
-  extends: [.deploy_template, .user-service-changes]
+  extends: .deploy_template
   variables:
     SERVICE_NAME: "user-service"
     USER_TAG: "$CI_COMMIT_SHORT_SHA"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      changes:
+        - backend/user-service/**/*
+        - .gitlab-ci.yml
+        - docker-compose.yml
 
 deploy-blog-service:
-  extends: [.deploy_template, .blog-service-changes]
+  extends: .deploy_template
   variables:
     SERVICE_NAME: "blog-service"
     BLOG_TAG: "$CI_COMMIT_SHORT_SHA"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      changes:
+        - backend/blog-service/**/*
+        - .gitlab-ci.yml
+        - docker-compose.yml
 
 deploy-file-service:
-  extends: [.deploy_template, .file-service-changes]
+  extends: .deploy_template
   variables:
     SERVICE_NAME: "file-service"
     FILE_TAG: "$CI_COMMIT_SHORT_SHA"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      changes:
+        - backend/file-service/**/*
+        - .gitlab-ci.yml
+        - docker-compose.yml
 
 deploy-frontend:
-  extends: [.deploy_template, .frontend-changes]
+  extends: .deploy_template
   variables:
     SERVICE_NAME: "frontend"
     FRONTEND_TAG: "$CI_COMMIT_SHORT_SHA"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      changes:
+        - frontend/**/*
+        - .gitlab-ci.yml
+        - docker-compose.yml
