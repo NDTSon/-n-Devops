@@ -1,0 +1,20 @@
+Volumes:
+  data:
+    Type:       PersistentVolumeClaim (a reference to a PersistentVolumeClaim in the same namespace)
+    ClaimName:  blog-db-pvc
+    ReadOnly:   false
+  kube-api-access-4rwh6:
+    Type:                    Projected (a volume that contains injected data from multiple sources)
+    TokenExpirationSeconds:  3607
+    ConfigMapName:           kube-root-ca.crt
+    Optional:                false
+    DownwardAPI:             true
+QoS Class:                   Burstable
+Node-Selectors:              <none>
+Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type    Reason     Age   From               Message
+  ----    ------     ----  ----               -------
+  Normal  Scheduled  87s   default-scheduler  Successfully assigned blog-app/blog-db-9995df486-brdk4 to k3d-blog-dev-agent-1
+  Normal  Pulling    86s   kubelet            Pulling image "postgres:15-alpine"
