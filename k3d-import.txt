@@ -1,4 +1,0 @@
-[36mINFO[0m[0000] Importing image(s) into cluster 'blog-dev'   
-[33mWARN[0m[0000] Image 'postgres:15-alpine' is not a file and couldn't be found in the container runtime 
-[31mERRO[0m[0000] Failed to import image(s) into cluster 'blog-dev': no valid images specified 
-[33mWARN[0m[0000] At least one error occured while trying to import the image(s) into the selected cluster(s) 

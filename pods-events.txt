@@ -1,0 +1,30 @@
+10m         Normal    ScalingReplicaSet       deployment/blog-service                      Scaled up replica set blog-service-648d6d649f to 1
+10m         Normal    Pulling                 pod/file-service-54944bf846-n8qd9            Pulling image "registry.gitlab.com/mquangpham575/devops/file-service:latest"
+10m         Normal    Pulling                 pod/blog-service-648d6d649f-k2t6x            Pulling image "registry.gitlab.com/mquangpham575/devops/blog-service:latest"
+3m40s       Normal    Pulling                 pod/user-service-75f46d9fdd-mq7xl            Pulling image "registry.gitlab.com/mquangpham575/devops/user-service:latest"
+10m         Normal    SuccessfulCreate        replicaset/file-service-54944bf846           Created pod: file-service-54944bf846-n8qd9
+10m         Normal    Started                 pod/blog-service-648d6d649f-k2t6x            Started container blog-service
+10m         Normal    Created                 pod/blog-service-648d6d649f-k2t6x            Created container blog-service
+10m         Normal    Pulled                  pod/blog-service-648d6d649f-k2t6x            Successfully pulled image "registry.gitlab.com/mquangpham575/devops/blog-service:latest" in 2.932s (2.932s including waiting). Image size: 131922670 bytes.
+8m33s       Normal    ScalingReplicaSet       deployment/blog-service                      Scaled down replica set blog-service-7f5cfc8fb8 to 0 from 1
+8m33s       Normal    Killing                 pod/blog-service-7f5cfc8fb8-c2c76            Stopping container blog-service
+8m33s       Normal    SuccessfulDelete        replicaset/blog-service-7f5cfc8fb8           Deleted pod: blog-service-7f5cfc8fb8-c2c76
+7m15s       Normal    Pulled                  pod/user-service-75f46d9fdd-mq7xl            Successfully pulled image "registry.gitlab.com/mquangpham575/devops/user-service:latest" in 3m29.991s (3m29.991s including waiting). Image size: 124307993 bytes.
+3m37s       Normal    Created                 pod/user-service-75f46d9fdd-mq7xl            Created container user-service
+3m37s       Normal    Started                 pod/user-service-75f46d9fdd-mq7xl            Started container user-service
+6m50s       Normal    Created                 pod/file-service-54944bf846-n8qd9            Created container file-service
+6m50s       Normal    Pulled                  pod/file-service-54944bf846-n8qd9            Successfully pulled image "registry.gitlab.com/mquangpham575/devops/file-service:latest" in 3m55.11s (3m55.11s including waiting). Image size: 125263720 bytes.
+6m49s       Normal    Started                 pod/file-service-54944bf846-n8qd9            Started container file-service
+6m41s       Warning   Unhealthy               pod/file-db-8568ddcf5b-v5rq2                 Liveness probe failed: command timed out: "pg_isready -U postgres" timed out after 1s
+6m41s       Warning   Unhealthy               pod/blog-db-9995df486-bvck8                  Readiness probe failed: command timed out: "pg_isready -U postgres" timed out after 1s
+6m41s       Warning   Unhealthy               pod/blog-db-9995df486-bvck8                  Liveness probe failed: command timed out: "pg_isready -U postgres" timed out after 1s
+6m41s       Warning   Unhealthy               pod/file-db-8568ddcf5b-v5rq2                 Readiness probe failed: command timed out: "pg_isready -U postgres" timed out after 1s
+90s         Warning   Unhealthy               pod/user-service-75f46d9fdd-mq7xl            Readiness probe failed: Get "http://10.42.1.21:8081/actuator/health": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+42s         Warning   Unhealthy               pod/user-service-75f46d9fdd-mq7xl            Readiness probe failed: HTTP probe failed with statuscode: 503
+4m49s       Normal    Pulled                  pod/user-service-bdd57f4d5-wng7p             (combined from similar events): Successfully pulled image "registry.gitlab.com/mquangpham575/devops/user-service:latest" in 4.158s (4.158s including waiting). Image size: 124307993 bytes.
+4m43s       Normal    Killing                 pod/file-service-5f5fc46d5f-x85cx            Stopping container file-service
+4m43s       Normal    SuccessfulDelete        replicaset/file-service-5f5fc46d5f           Deleted pod: file-service-5f5fc46d5f-x85cx
+4m43s       Normal    ScalingReplicaSet       deployment/file-service                      Scaled down replica set file-service-5f5fc46d5f to 0 from 1
+3m43s       Warning   Unhealthy               pod/user-service-75f46d9fdd-mq7xl            Liveness probe failed: HTTP probe failed with statuscode: 503
+3m43s       Normal    Killing                 pod/user-service-75f46d9fdd-mq7xl            Container user-service failed liveness probe, will be restarted
+3m37s       Normal    Pulled                  pod/user-service-75f46d9fdd-mq7xl            Successfully pulled image "registry.gitlab.com/mquangpham575/devops/user-service:latest" in 3.01s (3.01s including waiting). Image size: 124307993 bytes.

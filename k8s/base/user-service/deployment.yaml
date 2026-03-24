@@ -67,6 +67,8 @@ spec:
                   key: JWT_EXPIRATION
             - name: APP_BASE_URL
               value: http://localhost:5173
+            - name: MANAGEMENT_HEALTH_MAIL_ENABLED
+              value: "false"
           readinessProbe:
             httpGet:
               path: /actuator/health

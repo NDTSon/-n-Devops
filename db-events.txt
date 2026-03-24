@@ -1,3 +1,0 @@
-LAST SEEN   TYPE     REASON      OBJECT                       MESSAGE
-84s         Normal   Scheduled   pod/blog-db-746964cf-6t98s   Successfully assigned blog-app/blog-db-746964cf-6t98s to k3d-blog-dev-agent-1
-84s         Normal   Pulling     pod/blog-db-746964cf-6t98s   Pulling image "postgres:18-alpine"
