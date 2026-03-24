@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: file-db
+  namespace: blog-app
+  labels:
+    app: file-db
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5432
+      targetPort: 5432
+  selector:
+    app: file-db

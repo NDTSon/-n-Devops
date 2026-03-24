@@ -1,0 +1,27 @@
+# ArgoCD Application — watches k8s/overlays/dev and syncs to blog-app namespace
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: blog-app
+  namespace: argocd
+spec:
+  project: blog-platform
+  source:
+    repoURL: https://gitlab.com/mquangpham575/DevOps.git
+    targetRevision: main
+    path: k8s/overlays/dev
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: blog-app
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

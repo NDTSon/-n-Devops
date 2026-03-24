@@ -1,0 +1,29 @@
+# Dev overlay — for k3d local development
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+# Lower resource limits for local dev
+patches:
+  - target:
+      kind: Deployment
+      labelSelector: tier=backend
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "384Mi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: "300m"
+  - target:
+      kind: Deployment
+      labelSelector: tier=database
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "256Mi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: "300m"
