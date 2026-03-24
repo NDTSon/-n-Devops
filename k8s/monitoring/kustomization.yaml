@@ -6,5 +6,7 @@ resources:
   - prometheus.yaml
   - grafana.yaml
 
-commonLabels:
-  app.kubernetes.io/part-of: blog-platform
+labels:
+  - includeSelectors: true
+    pairs:
+      app.kubernetes.io/part-of: blog-platform
