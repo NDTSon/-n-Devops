@@ -8,7 +8,7 @@ spec:
   project: blog-platform
   source:
     repoURL: https://gitlab.com/mquangpham575/DevOps.git
-    targetRevision: main
+    targetRevision: outside-monitoring
     path: k8s/overlays/dev
   destination:
     server: https://kubernetes.default.svc
