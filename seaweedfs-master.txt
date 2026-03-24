@@ -1,0 +1,20 @@
+I0324 18:10:55.874963 file_util.go:28 Folder /data Permission: -rwxrwxrwx
+I0324 18:10:55.878847 master.go:332 current: seaweedfs-master:9333 peers:
+I0324 18:10:55.880438 master_server.go:149 Volume Size Limit is 30000 MB
+I0324 18:10:55.881195 master.go:192 Start Seaweed Master 30GB 4.16 d4d2e511e at seaweedfs-master:9333
+F0324 18:10:55.890945 master.go:195 Master startup error: listen tcp 10.43.58.159:9333: bind: cannot assign requested address
+goroutine 1 [running]:
+github.com/seaweedfs/seaweedfs/weed/glog.stacks(0x0)
+	/go/src/github.com/seaweedfs/seaweedfs/weed/glog/glog.go:780 +0x89
+github.com/seaweedfs/seaweedfs/weed/glog.(*loggingT).output(0x9158400, 0x3, 0xc0008953b0, {0x72a3729?, 0xc0005f1b20?}, 0x1?, 0x0)
+	/go/src/github.com/seaweedfs/seaweedfs/weed/glog/glog.go:731 +0x43d
+github.com/seaweedfs/seaweedfs/weed/glog.(*loggingT).printf(0x9158400, 0x3, {0x5380aea, 0x18}, {0xc0005f1b20, 0x1, 0x1})
+	/go/src/github.com/seaweedfs/seaweedfs/weed/glog/glog.go:658 +0x10a
+github.com/seaweedfs/seaweedfs/weed/glog.Fatalf(...)
+	/go/src/github.com/seaweedfs/seaweedfs/weed/glog/glog.go:1171
+github.com/seaweedfs/seaweedfs/weed/command.startMaster({0xc0011e2718, 0xc0011e2730, 0xc00158afa0, 0xc00158afc0, 0xc00158afd0, 0xc00158aff0, 0x0, 0xc0011e27f0, 0xc0011e2805, 0xc0011e2810, ...}, ...)
+	/go/src/github.com/seaweedfs/seaweedfs/weed/command/master.go:195 +0x3d2
+github.com/seaweedfs/seaweedfs/weed/command.runMaster(0x9122fb8?, {0xc000072070?, 0x3?, 0x3?})
+	/go/src/github.com/seaweedfs/seaweedfs/weed/command/master.go:167 +0x495
+main.main()
+	/go/src/github.com/seaweedfs/seaweedfs/weed/weed.go:97 +0x3ec

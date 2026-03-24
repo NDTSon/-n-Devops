@@ -23,7 +23,7 @@ spec:
         - name: seaweedfs-filer
           image: chrislusf/seaweedfs:latest
           command: ["weed"]
-          args: ["filer", "-ip=seaweedfs-filer", "-port=8888", "-master=seaweedfs-master:9333"]
+          args: ["filer", "-ip=seaweedfs-filer", "-ip.bind=0.0.0.0", "-port=8888", "-master=seaweedfs-master:9333"]
           ports:
             - containerPort: 8888
           resources:

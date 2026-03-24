@@ -1,0 +1,73 @@
+Name:             blog-db-746964cf-nw8s5
+Namespace:        blog-app
+Priority:         0
+Service Account:  default
+Node:             k3d-blog-dev-agent-1/172.20.0.5
+Start Time:       Wed, 25 Mar 2026 01:06:06 +0700
+Labels:           app=blog-db
+                  app.kubernetes.io/part-of=blog-platform
+                  pod-template-hash=746964cf
+                  tier=database
+Annotations:      <none>
+Status:           Pending
+IP:               10.42.1.12
+IPs:
+  IP:           10.42.1.12
+Controlled By:  ReplicaSet/blog-db-746964cf
+Containers:
+  postgres:
+    Container ID:   
+    Image:          postgres:18-alpine
+    Image ID:       
+    Port:           5432/TCP
+    Host Port:      0/TCP
+    State:          Waiting
+      Reason:       ImagePullBackOff
+    Ready:          False
+    Restart Count:  0
+    Limits:
+      cpu:     300m
+      memory:  256Mi
+    Requests:
+      cpu:      100m
+      memory:   128Mi
+    Liveness:   exec [pg_isready -U postgres] delay=30s timeout=1s period=10s #success=1 #failure=3
+    Readiness:  exec [pg_isready -U postgres] delay=10s timeout=1s period=10s #success=1 #failure=3
+    Environment:
+      POSTGRES_DB:        blog_service_db
+      POSTGRES_USER:      <set to the key 'POSTGRES_USER' in secret 'db-credentials'>      Optional: false
+      POSTGRES_PASSWORD:  <set to the key 'POSTGRES_PASSWORD' in secret 'db-credentials'>  Optional: false
+    Mounts:
+      /var/lib/postgresql/data from data (rw)
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-nqfnw (ro)
+Conditions:
+  Type                        Status
+  PodReadyToStartContainers   True 
+  Initialized                 True 
+  Ready                       False 
+  ContainersReady             False 
+  PodScheduled                True 
+Volumes:
+  data:
+    Type:       PersistentVolumeClaim (a reference to a PersistentVolumeClaim in the same namespace)
+    ClaimName:  blog-db-pvc
+    ReadOnly:   false
+  kube-api-access-nqfnw:
+    Type:                    Projected (a volume that contains injected data from multiple sources)
+    TokenExpirationSeconds:  3607
+    ConfigMapName:           kube-root-ca.crt
+    Optional:                false
+    DownwardAPI:             true
+QoS Class:                   Burstable
+Node-Selectors:              <none>
+Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type     Reason     Age                   From               Message
+  ----     ------     ----                  ----               -------
+  Normal   Scheduled  5m37s                 default-scheduler  Successfully assigned blog-app/blog-db-746964cf-nw8s5 to k3d-blog-dev-agent-1
+  Warning  Failed     2m4s                  kubelet            Failed to pull image "postgres:18-alpine": failed to pull and unpack image "docker.io/library/postgres:18-alpine": failed to copy: httpReadSeeker: failed open: failed to do request: Get "https://registry-1.docker.io/v2/library/postgres/manifests/sha256:4da1a4828be12604092fa55311276f08f9224a74a62dcb4708bd7439e2a03911": unexpected EOF
+  Warning  Failed     2m4s                  kubelet            Error: ErrImagePull
+  Normal   BackOff    2m3s                  kubelet            Back-off pulling image "postgres:18-alpine"
+  Warning  Failed     2m3s                  kubelet            Error: ImagePullBackOff
+  Normal   Pulling    109s (x2 over 5m37s)  kubelet            Pulling image "postgres:18-alpine"

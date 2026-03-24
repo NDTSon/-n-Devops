@@ -23,7 +23,7 @@ spec:
         - name: seaweedfs-volume
           image: chrislusf/seaweedfs:latest
           command: ["weed"]
-          args: ["volume", "-ip=seaweedfs-volume", "-port=8080", "-mserver=seaweedfs-master:9333", "-dir=/data"]
+          args: ["volume", "-ip=seaweedfs-volume", "-ip.bind=0.0.0.0", "-port=8080", "-mserver=seaweedfs-master:9333", "-dir=/data"]
           ports:
             - containerPort: 8080
           volumeMounts:
