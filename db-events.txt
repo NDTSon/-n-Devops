@@ -1,30 +1,3 @@
-7m51s       Normal    SuccessfulCreate        replicaset/seaweedfs-volume-786ffdcb77       Created pod: seaweedfs-volume-786ffdcb77-hqwzw
-7m51s       Normal    ScalingReplicaSet       deployment/seaweedfs-master                  Scaled up replica set seaweedfs-master-576dd89d44 to 1
-7m51s       Normal    Pulling                 pod/seaweedfs-filer-5c5644545-kvzfg          Pulling image "chrislusf/seaweedfs:latest"
-7m50s       Normal    Scheduled               pod/seaweedfs-master-576dd89d44-hcdfg        Successfully assigned blog-app/seaweedfs-master-576dd89d44-hcdfg to k3d-blog-dev-agent-1
-7m51s       Normal    ScalingReplicaSet       deployment/seaweedfs-volume                  Scaled up replica set seaweedfs-volume-786ffdcb77 to 1
-7m51s       Normal    SuccessfulCreate        replicaset/seaweedfs-master-576dd89d44       Created pod: seaweedfs-master-576dd89d44-hcdfg
-7m50s       Normal    Scheduled               pod/seaweedfs-volume-786ffdcb77-hqwzw        Successfully assigned blog-app/seaweedfs-volume-786ffdcb77-hqwzw to k3d-blog-dev-server-0
-7m50s       Normal    Pulling                 pod/seaweedfs-master-576dd89d44-hcdfg        Pulling image "chrislusf/seaweedfs:latest"
-7m50s       Normal    Pulling                 pod/seaweedfs-volume-786ffdcb77-hqwzw        Pulling image "chrislusf/seaweedfs:latest"
-7m49s       Normal    Created                 pod/seaweedfs-filer-5c5644545-kvzfg          Created container seaweedfs-filer
-7m49s       Normal    Created                 pod/seaweedfs-volume-786ffdcb77-hqwzw        Created container seaweedfs-volume
-7m49s       Normal    Pulled                  pod/seaweedfs-filer-5c5644545-kvzfg          Successfully pulled image "chrislusf/seaweedfs:latest" in 1.763s (1.763s including waiting). Image size: 89005975 bytes.
-7m49s       Normal    Started                 pod/seaweedfs-master-576dd89d44-hcdfg        Started container seaweedfs-master
-7m49s       Normal    Created                 pod/seaweedfs-master-576dd89d44-hcdfg        Created container seaweedfs-master
-7m49s       Normal    Pulled                  pod/seaweedfs-master-576dd89d44-hcdfg        Successfully pulled image "chrislusf/seaweedfs:latest" in 1.604s (1.604s including waiting). Image size: 89005975 bytes.
-7m49s       Normal    Pulled                  pod/seaweedfs-volume-786ffdcb77-hqwzw        Successfully pulled image "chrislusf/seaweedfs:latest" in 1.718s (1.719s including waiting). Image size: 89005975 bytes.
-7m49s       Normal    Started                 pod/seaweedfs-filer-5c5644545-kvzfg          Started container seaweedfs-filer
-7m48s       Normal    Started                 pod/seaweedfs-volume-786ffdcb77-hqwzw        Started container seaweedfs-volume
-3m34s       Normal    ScalingReplicaSet       deployment/blog-db                           Scaled up replica set blog-db-9995df486 to 1
-3m33s       Normal    ScalingReplicaSet       deployment/user-db                           Scaled up replica set user-db-b8c55678c to 1
-3m33s       Normal    SuccessfulCreate        replicaset/user-db-b8c55678c                 Created pod: user-db-b8c55678c-8s4vf
-3m32s       Normal    Scheduled               pod/user-db-b8c55678c-8s4vf                  Successfully assigned blog-app/user-db-b8c55678c-8s4vf to k3d-blog-dev-agent-0
-3m33s       Normal    SuccessfulCreate        replicaset/blog-db-9995df486                 Created pod: blog-db-9995df486-brdk4
-3m33s       Normal    Scheduled               pod/blog-db-9995df486-brdk4                  Successfully assigned blog-app/blog-db-9995df486-brdk4 to k3d-blog-dev-agent-1
-3m32s       Normal    ScalingReplicaSet       deployment/file-db                           Scaled up replica set file-db-8568ddcf5b to 1
-3m32s       Normal    SuccessfulCreate        replicaset/file-db-8568ddcf5b                Created pod: file-db-8568ddcf5b-xrjdl
-3m31s       Normal    Scheduled               pod/file-db-8568ddcf5b-xrjdl                 Successfully assigned blog-app/file-db-8568ddcf5b-xrjdl to k3d-blog-dev-server-0
-3m32s       Normal    Pulling                 pod/blog-db-9995df486-brdk4                  Pulling image "postgres:15-alpine"
-3m31s       Normal    Pulling                 pod/user-db-b8c55678c-8s4vf                  Pulling image "postgres:15-alpine"
-3m31s       Normal    Pulling                 pod/file-db-8568ddcf5b-xrjdl                 Pulling image "postgres:15-alpine"
+LAST SEEN   TYPE     REASON      OBJECT                       MESSAGE
+84s         Normal   Scheduled   pod/blog-db-746964cf-6t98s   Successfully assigned blog-app/blog-db-746964cf-6t98s to k3d-blog-dev-agent-1
+84s         Normal   Pulling     pod/blog-db-746964cf-6t98s   Pulling image "postgres:18-alpine"

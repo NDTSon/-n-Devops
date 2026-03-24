@@ -1,0 +1,11 @@
+NAME                                READY   STATUS              RESTARTS        AGE
+blog-db-746964cf-6t98s              0/1     ContainerCreating   0               68s
+blog-service-7f5cfc8fb8-c2c76       0/1     CrashLoopBackOff    7 (3m42s ago)   26m
+file-db-668469c989-vmvm6            0/1     ContainerCreating   0               31s
+file-service-5f5fc46d5f-x85cx       0/1     CrashLoopBackOff    7 (3m55s ago)   26m
+frontend-57bb4d6455-8dc48           1/1     Running             0               26m
+seaweedfs-filer-5c5644545-kvzfg     1/1     Running             0               18m
+seaweedfs-master-576dd89d44-hcdfg   1/1     Running             0               18m
+seaweedfs-volume-786ffdcb77-hqwzw   1/1     Running             0               18m
+user-db-6544fd765d-65b72            0/1     ContainerCreating   0               68s
+user-service-bdd57f4d5-wng7p        0/1     CrashLoopBackOff    7 (2m44s ago)   26m

@@ -1,0 +1,11 @@
+IMAGE                                                   TAG                 IMAGE ID            SIZE
+docker.io/grafana/grafana                               latest              beafdfed0240b       214MB
+docker.io/library/postgres                              15-alpine           cd848ee12e8ef       109MB
+docker.io/rancher/klipper-lb                            v0.4.9              11a5d8a9f31aa       4.99MB
+docker.io/rancher/local-path-provisioner                v0.0.30             b580d47bc23dd       18.6MB
+docker.io/rancher/mirrored-library-busybox              1.36.1              2d61ae04c2b80       2.15MB
+docker.io/rancher/mirrored-pause                        3.6                 6270bb605e12e       301kB
+public.ecr.aws/docker/library/redis                     8.2.3-alpine        f508abec2c47b       27.5MB
+quay.io/argoproj/argocd                                 v3.3.4              0ad7450070ed8       194MB
+registry.gitlab.com/mquangpham575/devops/blog-service   latest              5fccea2b365de       132MB
+registry.k8s.io/ingress-nginx/kube-webhook-certgen      <none>              6595b1857d401       27MB
