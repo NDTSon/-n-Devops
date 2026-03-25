@@ -10,60 +10,50 @@ stages:
   rules:
     - changes:
         - backend/user-service/**/*
-        - .gitlab-ci.yml
 
 .blog-service-changes:
   rules:
     - changes:
         - backend/blog-service/**/*
-        - .gitlab-ci.yml
 
 .file-service-changes:
   rules:
     - changes:
         - backend/file-service/**/*
-        - .gitlab-ci.yml
 
 .frontend-changes:
   rules:
     - changes:
         - frontend/**/*
-        - .gitlab-ci.yml
 
 .user-service-main-changes:
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
       changes:
         - backend/user-service/**/*
-        - .gitlab-ci.yml
 
 .blog-service-main-changes:
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
       changes:
         - backend/blog-service/**/*
-        - .gitlab-ci.yml
 
 .file-service-main-changes:
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
       changes:
         - backend/file-service/**/*
-        - .gitlab-ci.yml
 
 .frontend-main-changes:
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
       changes:
         - frontend/**/*
-        - .gitlab-ci.yml
 
 variables:
   DOCKER_DRIVER: overlay2
-  # FIX 1: Tell Maven to use a directory INSIDE the project folder
   MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
 
-# FIX 2: Update the global cache to point to the new internal path
 cache:
   key: "$CI_COMMIT_REF_SLUG"
   paths:
@@ -168,7 +158,6 @@ test-file-service:
     SERVICE_DIR: "backend/file-service"
   dependencies:
     - build-file-service
-
 
 test-frontend:
   image: node:20-alpine
@@ -300,7 +289,6 @@ container-scan:
         - backend/blog-service/**/*
         - backend/file-service/**/*
         - frontend/**/*
-        - .gitlab-ci.yml
   needs:
     - job: docker-user-service
       optional: true
