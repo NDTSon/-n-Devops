@@ -227,7 +227,7 @@ docker-frontend:
     - git config --global user.email "ci@gitlab.com"
     - git remote set-url origin https://oauth2:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git
   script:
-    - sed -i "/name: .*\/$SERVICE_NAME/{n;s/newTag: .*/newTag: $CI_COMMIT_SHORT_SHA/}" k8s/overlays/prod/kustomization.yaml
+    - "sed -i \"/name: .*\\/$SERVICE_NAME/{n;s/newTag: .*/newTag: $CI_COMMIT_SHORT_SHA/}\" k8s/overlays/prod/kustomization.yaml"
     - git add k8s/overlays/prod/kustomization.yaml
     - git commit -m "Update $SERVICE_NAME image tag to $CI_COMMIT_SHORT_SHA [skip ci]" || echo "No changes to commit"
     - |
