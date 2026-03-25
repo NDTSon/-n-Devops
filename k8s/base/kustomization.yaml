@@ -54,4 +54,3 @@ images:
     newTag: latest
   - name: registry.gitlab.com/mquangpham575/devops/frontend
     newTag: latest
-

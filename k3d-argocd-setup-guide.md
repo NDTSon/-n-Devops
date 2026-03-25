@@ -1,93 +1,368 @@
 # GitOps Infrastructure Setup Guide
 
-This guide details the complete, zero-problem setup for your local k3d Kubernetes cluster, ArgoCD, and GitLab CI pipeline. 
-This infrastructure uses a true GitOps strategy where **ArgoCD pulls changes** from your Git repository rather than your CI pushing via SSH.
+Quick setup guide for local k3d cluster with ArgoCD GitOps deployment.
+
+**Last Updated:** 2026-03-25 | **Status:** ✅ Verified Working
 
 ---
 
-## 1. Prerequisites
-- Docker Desktop / Docker Engine
-- `k3d` CLI installed
-- `kubectl` configured
-- `argocd` CLI installed (optional but recommended)
+## Prerequisites
+
+- Docker Desktop running
+- `k3d`, `kubectl`, `argocd` CLI installed
+- GitLab account with Personal Access Token (PAT)
 
 ---
 
-## 2. Local Cluster Creation
-Your cluster requires properly mapped load balancer ports and NGINX Ingress to expose ArgoCD and your App UIs cleanly without manual port-forwarding.
+## Quick Start (5 Minutes)
 
-**Run the cluster setup script:**
+### 1. Create k3d Cluster
+
 ```bash
 bash scripts/k3d-setup.sh
 ```
-*What this does:*
-- Creates a `blog-dev` k3d cluster (1 server, 2 agents).
-- Maps host ports `8080:80`, `8443:443`, and `19090:9090` (Prometheus) to the cluster's internal load balancer.
-- Disables the default Traefik so NGINX Ingress can be used.
-- Installs NGINX Ingress and waits for it to be ready.
-- Sets up standard namespaces (`blog-app`) and secrets.
+
+This creates a `blog-dev` cluster with 1 server + 2 agents, NGINX Ingress enabled.
+
+**Verify:**
+
+```bash
+k3d cluster list
+kubectl get nodes  # All should be Ready
+```
 
 ---
 
-## 3. ArgoCD Installation & Configuration
-Instead of using explicit port-forwarding, ArgoCD is exposed via `argocd.local` on your host.
+### 2. Install ArgoCD
 
-**Run the ArgoCD installation script:**
 ```bash
 bash scripts/argocd-install.sh
 ```
 
-*What this does:*
-- Installs the stable ArgoCD release into the `argocd` namespace (using `--server-side --force-conflicts` to bypass Kubernetes annotation size limits on large CRDs).
-- Patches the ArgoCD server deployment with `--insecure`. This forces internal communication to HTTP so the NGINX Ingress controller can handle SSL Termination.
-- Applies `argocd/ingress.yaml` which exposes ArgoCD at `https://argocd.local:8443`.
+**Get admin password:**
 
-**Finalizing Local Access:**
-1. Open your host machine's hosts file (`C:\Windows\System32\drivers\etc\hosts` on Windows, or `/etc/hosts` on Linux/Mac).
-2. Add this line:
-   ```text
+```bash
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+```
+
+**Access ArgoCD UI:**
+
+1. Add to your hosts file (`C:\Windows\System32\drivers\etc\hosts` or `/etc/hosts`):
+   ```
    127.0.0.1 argocd.local
    ```
-3. Open your browser to `https://argocd.local:8443`. Ignore the self-signed certificate warning.
-4. Log in using `admin` and the password output by the installation script.
+2. Open `http://argocd.local:8080`
+3. Login: `admin` / (password from above)
 
 ---
 
-## 4. Connecting Git & Deploying Apps
-Once logged in, hook up the DevOps repository:
+### 3. Connect GitLab Repository
 
-1. **Add Repository Credentials:** Provide ArgoCD with access to pull your code:
-   ```bash
-   argocd login argocd.local:8443 --username admin --password '<your-password>'
-   argocd repo add https://gitlab.com/mquangpham575/DevOps.git --username <gitlab-user> --password <personal-access-token>
-   ```
+**Create repository secret:**
 
-2. **Apply the Declarative Setup:**
-   Instead of manually creating apps via the UI, use the declarative manifests which are configured to track the `HEAD` (main) branch:
-   ```bash
-   kubectl apply -f argocd/project.yaml
-   kubectl apply -f argocd/blog-app.yaml
-   kubectl apply -f argocd/monitoring.yaml
-   ```
+```bash
+kubectl apply -f argocd/gitlab-repo-secret.yaml
+```
 
-ArgoCD will immediately detect your services, databases, and monitoring stack in `k8s/overlays/dev` and sync them down to the cluster!
+**Verify connection:**
+
+```bash
+kubectl get secret -n argocd -l argocd.argoproj.io/secret-type=repository
+```
 
 ---
 
-## 5. The CI/CD Workflow (GitOps)
-The `.gitlab-ci.yml` has been rewritten to follow standard GitOps patterns. 
-No SSH deployments are performed anymore.
+### 4. Setup GitLab Registry Access
 
-**The automated flow works as follows:**
-1. **Commit:** You push code to `main`.
-2. **Build & Test:** GitLab CI builds your Java/Node code (`build-*` and `test-*` jobs) reusing cached Maven/Node modules.
-3. **Docker Build:** `docker-*` jobs build your images and append the Git short SHA as the tag (e.g., `registry.gitlab.com/.../user-service:a1b2c3d`).
-4. **Update Manifests (Deploy Stage):** 
-   - Instead of trying to connect to your cluster via SSH, the CI clones the DevOps repo itself.
-   - It runs a `sed` command to update the image tags in `k8s/overlays/prod/kustomization.yaml` with the new short SHA.
-   - It commits those changes back to the GitLab `main` branch.
-5. **Sync (ArgoCD):** 
-   - ArgoCD detects the new commit in `k8s/overlays/prod/kustomization.yaml`.
-   - ArgoCD tells Kubernetes to pull the new Image and perform a rolling restart on the pods.
+**Create image pull secret:**
 
-Zero downtime, complete audit log, and 0 manual problems!
+```bash
+kubectl create secret docker-registry gitlab-registry \
+  --namespace blog-app \
+  --docker-server=registry.gitlab.com \
+  --docker-username=mquangpham575 \
+  --docker-password='<FULL_GITLAB_PAT_FROM_INFOR.MD>' \
+  --docker-email=<YOUR_EMAIL>
+```
+
+⚠️ **Important:** Use the FULL PAT token from `infor.md` - don't truncate it!
+
+---
+
+### 5. Deploy Applications
+
+```bash
+kubectl apply -f argocd/project.yaml
+kubectl apply -f argocd/blog-app.yaml
+kubectl apply -f argocd/monitoring.yaml
+```
+
+**Check status:**
+
+```bash
+kubectl get applications -n argocd
+kubectl get pods -n blog-app
+```
+
+Wait for all pods to be `Running` and applications to show `Synced` + `Healthy`.
+
+---
+
+## How It Works
+
+### Project Structure
+
+```
+k8s/
+├── base/                    # Base manifests
+│   ├── kustomization.yaml  # Image tags updated here by CI
+│   ├── *-service/          # Service deployments
+│   └── *-db/               # Database deployments
+├── overlays/
+│   └── dev/                # Dev environment (what ArgoCD deploys)
+└── monitoring/             # Prometheus/Grafana
+```
+
+### GitOps Workflow
+
+1. **Push code** → GitLab CI builds & tests
+2. **Docker build** → Pushes images with SHA tags to registry
+3. **Deploy stage** → CI updates `k8s/base/kustomization.yaml` with new image tags
+4. **ArgoCD detects** → Automatically syncs changes to cluster
+5. **Rolling update** → Pods restart with new images
+
+**Result:** Zero-downtime deployments, full Git audit trail, easy rollbacks.
+
+---
+
+## Daily Operations
+
+### View Application Status
+
+```bash
+# ArgoCD apps
+kubectl get applications -n argocd
+
+# All pods
+kubectl get pods -n blog-app
+
+# Specific service logs
+kubectl logs -n blog-app deployment/user-service -f
+```
+
+### Access Applications
+
+**ArgoCD UI:**
+
+- URL: `http://argocd.local:8080`
+- User: `admin` / (password from setup)
+
+**Blog App Services:**
+
+```bash
+# Frontend
+kubectl port-forward -n blog-app svc/frontend 3000:80
+
+# User Service
+kubectl port-forward -n blog-app svc/user-service 8081:8081
+
+# Blog Service
+kubectl port-forward -n blog-app svc/blog-service 8082:8082
+
+# File Service
+kubectl port-forward -n blog-app svc/file-service 8083:8083
+```
+
+### Force ArgoCD Sync
+
+```bash
+kubectl patch application blog-app -n argocd \
+  --type merge \
+  -p '{"operation":{"initiatedBy":{"username":"admin"},"sync":{"revision":"HEAD"}}}'
+```
+
+### Restart a Service
+
+```bash
+kubectl rollout restart deployment/user-service -n blog-app
+```
+
+---
+
+## Troubleshooting
+
+### ❌ Pods: `ImagePullBackOff`
+
+**Cause:** Wrong/missing GitLab registry secret or image doesn't exist.
+
+**Fix:**
+
+```bash
+# Check secret
+kubectl get secret gitlab-registry -n blog-app
+
+# Recreate with correct PAT
+kubectl delete secret gitlab-registry -n blog-app
+kubectl create secret docker-registry gitlab-registry \
+  --namespace blog-app \
+  --docker-server=registry.gitlab.com \
+  --docker-username=mquangpham575 \
+  --docker-password='<FULL_PAT>' \
+  --docker-email=<YOUR_EMAIL>
+
+# Check image tag in deployment
+kubectl get deployment user-service -n blog-app -o jsonpath='{.spec.template.spec.containers[0].image}'
+```
+
+If image tag is wrong (e.g., `pending-ci-build`), update `k8s/base/kustomization.yaml` to use `latest`:
+
+```yaml
+images:
+  - name: registry.gitlab.com/mquangpham575/devops/user-service
+    newTag: latest
+```
+
+Commit and push, then wait for ArgoCD to sync.
+
+---
+
+### ❌ ArgoCD: Can't Pull from GitLab
+
+**Cause:** Missing repository credentials.
+
+**Fix:**
+
+```bash
+# Check if secret exists
+kubectl get secret -n argocd -l argocd.argoproj.io/secret-type=repository
+
+# If missing, create it
+kubectl apply -f argocd/gitlab-repo-secret.yaml
+
+# View in UI: Settings > Repositories (should show Connected)
+```
+
+---
+
+### ❌ ArgoCD: Application `OutOfSync`
+
+**Cause:** Cluster state differs from Git.
+
+**Fix:**
+
+```bash
+# Force sync
+argocd app sync blog-app --force
+
+# Or via kubectl (see "Force ArgoCD Sync" above)
+```
+
+---
+
+### ❌ CI/CD: Deploy Stage Fails
+
+**Common cause:** Git push conflicts with concurrent deploys.
+
+**Fix:** Pipeline has auto-retry logic. If it keeps failing:
+
+1. Check GitLab CI variables are set correctly
+2. Ensure `CI_JOB_TOKEN` has write access
+3. Pull latest `main` branch before retrying
+
+---
+
+### ❌ Database Connection Errors
+
+**Cause:** Services start before databases are ready.
+
+**Fix:** Wait for databases:
+
+```bash
+kubectl wait --for=condition=ready pod -l app=user-db -n blog-app --timeout=300s
+kubectl wait --for=condition=ready pod -l app=blog-db -n blog-app --timeout=300s
+kubectl wait --for=condition=ready pod -l app=file-db -n blog-app --timeout=300s
+```
+
+Services have readiness probes, they'll retry connections automatically.
+
+---
+
+## Clean Up
+
+**Delete cluster (removes everything):**
+
+```bash
+k3d cluster delete blog-dev
+```
+
+**Rebuild from scratch:**
+
+```bash
+k3d cluster delete blog-dev
+bash scripts/k3d-setup.sh
+bash scripts/argocd-install.sh
+kubectl apply -f argocd/gitlab-repo-secret.yaml
+kubectl apply -f argocd/project.yaml
+kubectl apply -f argocd/blog-app.yaml
+```
+
+---
+
+## Quick Reference
+
+```bash
+# Cluster
+k3d cluster list
+kubectl get nodes
+kubectl get all -n blog-app
+
+# ArgoCD
+kubectl get applications -n argocd
+kubectl get application blog-app -n argocd -o yaml
+
+# Logs
+kubectl logs -n blog-app <pod-name> -f
+kubectl logs -n blog-app deployment/user-service -f
+
+# Secrets
+kubectl get secrets -n blog-app
+kubectl get secret gitlab-registry -n blog-app
+
+# ArgoCD password
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+
+# Port forward ArgoCD (if ingress not working)
+kubectl port-forward -n argocd svc/argocd-server 8080:80
+```
+
+---
+
+## Important Files
+
+| File                             | Purpose                            |
+| -------------------------------- | ---------------------------------- |
+| `argocd/gitlab-repo-secret.yaml` | GitLab repo credentials for ArgoCD |
+| `k8s/base/kustomization.yaml`    | Image tags (updated by CI)         |
+| `k8s/overlays/dev/`              | Dev environment config             |
+| `.gitlab-ci.yml`                 | CI/CD pipeline                     |
+| `infor.md`                       | GitLab PAT and credentials         |
+
+---
+
+## Best Practices
+
+- ✅ Always commit manifest changes to Git (let ArgoCD sync)
+- ✅ Use SHA image tags in production (not `:latest`)
+- ✅ Monitor ArgoCD UI for sync/health status
+- ✅ Check ArgoCD before debugging pods (may auto-heal)
+- ✅ Keep `infor.md` private (contains credentials)
+- ❌ Don't use `kubectl apply` on resources managed by ArgoCD
+- ❌ Don't commit secrets to Git
+
+---
+
+**Need Help?**
+
+- ArgoCD Docs: https://argo-cd.readthedocs.io/
+- k3d Docs: https://k3d.io/
+- Check `SETUP_STATUS.md` for current cluster state
