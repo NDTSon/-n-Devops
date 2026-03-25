@@ -1,9 +1,23 @@
 stages:
+  - validate
   - build
   - test
   - docker-build
   - scan
   - deploy
+
+# --- Validation Stage (Always Runs) ---
+validate-pipeline:
+  stage: validate
+  image: alpine:latest
+  script:
+    - echo "✅ Pipeline syntax is valid"
+    - echo "📋 Commit SHA: $CI_COMMIT_SHORT_SHA"
+    - echo "🌿 Branch: $CI_COMMIT_REF_NAME"
+    - echo "📝 Changes in this commit:"
+    - git diff --name-only $CI_COMMIT_BEFORE_SHA..$CI_COMMIT_SHA || echo "Initial commit or no previous SHA"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "main"
 
 # --- Change Detection Templates ---
 .user-service-changes:
