@@ -1,7 +1,8 @@
+stages:
   - build
   - test
-  - scan
   - docker-build
+  - scan
   - deploy
 
 # --- Change Detection Templates ---
@@ -246,6 +247,7 @@ deploy-user-service:
     SERVICE_NAME: "user-service"
   needs:
     - docker-user-service
+    - container-scan
 
 deploy-blog-service:
   extends: 
@@ -255,6 +257,7 @@ deploy-blog-service:
     SERVICE_NAME: "blog-service"
   needs:
     - docker-blog-service
+    - container-scan
 
 deploy-file-service:
   extends: 
@@ -264,6 +267,7 @@ deploy-file-service:
     SERVICE_NAME: "file-service"
   needs:
     - docker-file-service
+    - container-scan
 
 deploy-frontend:
   extends: 
@@ -273,6 +277,7 @@ deploy-frontend:
     SERVICE_NAME: "frontend"
   needs:
     - docker-frontend
+    - container-scan
 
 # --- Security Scan (DevSecOps) ---
 container-scan:
@@ -280,8 +285,17 @@ container-scan:
   image: 
     name: aquasec/trivy:latest
     entrypoint: [""]
-  extends: .user-service-main-changes # Run on any main change
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  needs:
+    - docker-user-service
+    - docker-blog-service
+    - docker-file-service
+    - docker-frontend
   script:
-    - trivy image --exit-code 0 --severity HIGH,CRITICAL $CI_REGISTRY_IMAGE/user-service:latest
-    - echo "Scan finished. Review results above."
+    - trivy image --exit-code 0 --severity HIGH,CRITICAL $CI_REGISTRY_IMAGE/user-service:$CI_COMMIT_SHORT_SHA
+    - trivy image --exit-code 0 --severity HIGH,CRITICAL $CI_REGISTRY_IMAGE/blog-service:$CI_COMMIT_SHORT_SHA
+    - trivy image --exit-code 0 --severity HIGH,CRITICAL $CI_REGISTRY_IMAGE/file-service:$CI_COMMIT_SHORT_SHA
+    - trivy image --exit-code 0 --severity HIGH,CRITICAL $CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHORT_SHA
+    - echo "Scan finished for version $CI_COMMIT_SHORT_SHA. Review results above."
   allow_failure: true
