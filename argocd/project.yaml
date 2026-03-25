@@ -1,0 +1,37 @@
+# ArgoCD AppProject for Blog Platform
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: blog-platform
+  namespace: argocd
+spec:
+  description: "Blog Platform DevOps Project - NT548.Q21 Course"
+
+  # Allowed source repositories
+  sourceRepos:
+    - https://gitlab.com/mquangpham575/DevOps.git
+
+  # Deployment destinations
+  destinations:
+    - namespace: blog-app
+      server: https://kubernetes.default.svc
+    - namespace: monitoring
+      server: https://kubernetes.default.svc
+
+  # Cluster-level resources permissions
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+    - group: networking.k8s.io
+      kind: IngressClass
+
+  # Namespace-level resources permissions (allow common K8s resources)
+  namespaceResourceWhitelist:
+    - group: ""
+      kind: "*"
+    - group: apps
+      kind: "*"
+    - group: networking.k8s.io
+      kind: "*"
+    - group: rbac.authorization.k8s.io
+      kind: "*"

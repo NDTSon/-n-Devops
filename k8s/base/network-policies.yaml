@@ -1,0 +1,174 @@
+# Network Policies for Blog Platform
+# Implements micro-segmentation for enhanced security
+
+---
+# Allow ingress traffic to frontend from ingress controller
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: frontend-ingress
+  namespace: blog-app
+spec:
+  podSelector:
+    matchLabels:
+      app: frontend
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 80
+
+---
+# Allow backend services to communicate with each other
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: backend-services
+  namespace: blog-app
+spec:
+  podSelector:
+    matchLabels:
+      tier: backend
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: frontend
+        - podSelector:
+            matchLabels:
+              tier: backend
+      ports:
+        - protocol: TCP
+          port: 8081 # user-service
+        - protocol: TCP
+          port: 8082 # blog-service
+        - protocol: TCP
+          port: 8083 # file-service
+  egress:
+    # Allow DNS resolution
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+    # Allow communication with databases
+    - to:
+        - podSelector:
+            matchLabels:
+              tier: database
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Allow communication between services
+    - to:
+        - podSelector:
+            matchLabels:
+              tier: backend
+      ports:
+        - protocol: TCP
+          port: 8081
+        - protocol: TCP
+          port: 8082
+        - protocol: TCP
+          port: 8083
+
+---
+# Restrict database access to backend services only
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: database-access
+  namespace: blog-app
+spec:
+  podSelector:
+    matchLabels:
+      tier: database
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              tier: backend
+      ports:
+        - protocol: TCP
+          port: 5432
+
+---
+# Allow SeaweedFS components to communicate
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: seaweedfs-cluster
+  namespace: blog-app
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values:
+          - seaweedfs-master
+          - seaweedfs-volume
+          - seaweedfs-filer
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchExpressions:
+              - key: app
+                operator: In
+                values:
+                  - seaweedfs-master
+                  - seaweedfs-volume
+                  - seaweedfs-filer
+        - podSelector:
+            matchLabels:
+              app: file-service
+      ports:
+        - protocol: TCP
+          port: 9333 # master
+        - protocol: TCP
+          port: 8080 # volume
+        - protocol: TCP
+          port: 8888 # filer
+  egress:
+    - to:
+        - podSelector:
+            matchExpressions:
+              - key: app
+                operator: In
+                values:
+                  - seaweedfs-master
+                  - seaweedfs-volume
+                  - seaweedfs-filer
+      ports:
+        - protocol: TCP
+          port: 9333
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 8888
+
+---
+# Default deny all policy for blog-app namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: blog-app
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+  # This policy denies all ingress and egress traffic by default
+  # Other policies above will explicitly allow required traffic

@@ -1,0 +1,41 @@
+# Pod Security - Service Account and RBAC
+# Note: Namespace with PSS labels is defined in namespace.yaml
+
+# Service Account with minimal privileges
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: blog-app-service-account
+  namespace: blog-app
+automountServiceAccountToken: false
+
+---
+# Minimal RBAC for blog application
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: blog-app-role
+  namespace: blog-app
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get"]
+    resourceNames: ["app-secrets", "db-credentials"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: blog-app-role-binding
+  namespace: blog-app
+subjects:
+  - kind: ServiceAccount
+    name: blog-app-service-account
+    namespace: blog-app
+roleRef:
+  kind: Role
+  name: blog-app-role
+  apiGroup: rbac.authorization.k8s.io

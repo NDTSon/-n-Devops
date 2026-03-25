@@ -1,0 +1,9 @@
+# Prod overlay — for k3s server deployment
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+# Override images with specific tags (updated by CI)
+# (Now moved to k8s/base/kustomization.yaml for global inheritance)

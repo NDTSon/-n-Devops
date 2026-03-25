@@ -1,16 +1,14 @@
-version: '3.8'
-
 services:
   # PostgreSQL for User Service
   user-db:
-    image: postgres:18-alpine
+    image: postgres:15-alpine
     container_name: user-database
     environment:
       POSTGRES_DB: user_service_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "5434:5432"
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    # ports:
+    #   - "5434:5432"
     volumes:
       - user-db-data:/var/lib/postgresql/data
     networks:
@@ -20,17 +18,24 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 60s
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # PostgreSQL for Blog Service
   blog-db:
-    image: postgres:18-alpine
+    image: postgres:15-alpine
     container_name: blog-database
     environment:
       POSTGRES_DB: blog_service_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "5433:5432"
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    # ports:
+    #   - "5433:5432"
     volumes:
       - blog-db-data:/var/lib/postgresql/data
     networks:
@@ -40,70 +45,107 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 60s
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # User Service
   user-service:
+    image: ${CI_REGISTRY_IMAGE:-local}/user-service:${USER_TAG:-latest}
     build:
       context: ./backend/user-service
       dockerfile: Dockerfile
     container_name: user-service
     environment:
+      SPRING_PROFILES_ACTIVE: docker
       SERVER_PORT: 8081
       SPRING_DATASOURCE_URL: jdbc:postgresql://user-db:5432/user_service_db
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
       SPRING_MAIL_HOST: smtp.gmail.com
       SPRING_MAIL_PORT: 587
-      SPRING_MAIL_USERNAME: sonvskt303@gmail.com
-      SPRING_MAIL_PASSWORD: skes mwnj exgf zbdt
-      JWT_SECRET: 5367566B59703373367639792F423F4528482B4D6251655468576D5A71347437
-      JWT_EXPIRATION: 86400000
+      SPRING_MAIL_USERNAME: ${MAIL_USERNAME}
+      SPRING_MAIL_PASSWORD: ${MAIL_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION}
       APP_BASE_URL: http://localhost:5173
-    ports:
-      - "9001:8081"
+    # ports:
+    #   - "9001:8081"
     depends_on:
       user-db:
         condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -qO- http://127.0.0.1:8081/actuator/health > /dev/null || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
     networks:
       - blog-network
-    volumes:
-      - ./uploads:/app/uploads
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # Blog Service
   blog-service:
+    image: ${CI_REGISTRY_IMAGE:-local}/blog-service:${BLOG_TAG:-latest}
     build:
       context: ./backend/blog-service
       dockerfile: Dockerfile
     container_name: blog-service
     environment:
+      SPRING_PROFILES_ACTIVE: docker
       SERVER_PORT: 8082
       SPRING_DATASOURCE_URL: jdbc:postgresql://blog-db:5432/blog_service_db
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
-      JWT_SECRET: 5367566B59703373367639792F423F4528482B4D6251655468576D5A71347437
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
       FILE_SERVICE_URL: http://file-service:8083
-    ports:
-      - "8083:8082"
+    # ports:
+    #   - "8083:8082"
     depends_on:
       blog-db:
         condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -qO- http://127.0.0.1:8082/actuator/health > /dev/null || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
     networks:
       - blog-network
-    volumes:
-      - ./uploads:/app/uploads
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # PostgreSQL for File Service
   file-db:
-    image: postgres:18-alpine
+    image: postgres:15-alpine
     container_name: file-database
     environment:
       POSTGRES_DB: file_service_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "5435:5432"
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    # ports:
+    #   - "5435:5432"
     volumes:
       - file-db-data:/var/lib/postgresql/data
     networks:
@@ -113,6 +155,13 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 60s
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # SeaweedFS Master Server
   seaweedfs-master:
@@ -126,6 +175,11 @@ services:
     networks:
       - blog-network
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # SeaweedFS Volume Server
   seaweedfs-volume:
@@ -141,6 +195,11 @@ services:
     networks:
       - blog-network
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # SeaweedFS Filer
   seaweedfs-filer:
@@ -155,24 +214,31 @@ services:
     networks:
       - blog-network
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # File Service
   file-service:
+    image: ${CI_REGISTRY_IMAGE:-local}/file-service:${FILE_TAG:-latest}
     build:
       context: ./backend/file-service
       dockerfile: Dockerfile
     container_name: file-service
     environment:
+      SPRING_PROFILES_ACTIVE: docker
       SERVER_PORT: 8083
       SPRING_DATASOURCE_URL: jdbc:postgresql://file-db:5432/file_service_db
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
       SEAWEEDFS_MASTER_URL: http://seaweedfs-master:9333
       SEAWEEDFS_FILER_URL: http://seaweedfs-filer:8888
-      JWT_SECRET: 5367566B59703373367639792F423F4528482B4D6251655468576D5A71347437
-      JWT_EXPIRATION: 86400000
-    ports:
-      - "8085:8083"
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION}
+    # ports:
+    #   - "8085:8083"
     depends_on:
       file-db:
         condition: service_healthy
@@ -180,14 +246,30 @@ services:
         condition: service_started
       seaweedfs-filer:
         condition: service_started
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -qO- http://127.0.0.1:8083/actuator/health > /dev/null || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
     networks:
       - blog-network
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # Frontend
   # Nginx trong frontend container đóng vai trò reverse proxy trực tiếp đến từng service.
   # Khi 1 service hỏng, chỉ các route của service đó bị ảnh hưởng, các service còn lại vẫn hoạt động bình thường.
   frontend:
+    image: ${CI_REGISTRY_IMAGE:-local}/frontend:${FRONTEND_TAG:-latest}
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -195,12 +277,64 @@ services:
     ports:
       - "5173:80"
     depends_on:
-      - user-service
-      - blog-service
-      - file-service
+      user-service:
+        condition: service_healthy
+      blog-service:
+        condition: service_healthy
+      file-service:
+        condition: service_healthy
     networks:
       - blog-network
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+    ports:
+      - "9090:9090"
+    networks:
+      - blog-network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+    depends_on:
+      - prometheus
+    networks:
+      - blog-network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   blog-network:
@@ -212,3 +346,5 @@ volumes:
   file-db-data:
   seaweedfs-master-data:
   seaweedfs-volume-data:
+  prometheus-data:
+  grafana-data:

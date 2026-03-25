@@ -4,16 +4,16 @@ server:
 spring:
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:local}
-  
+
   application:
     name: user-service
-  
+
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://user-db:5432/user_service_db}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
     password: ${SPRING_DATASOURCE_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
-  
+
   jpa:
     hibernate:
       ddl-auto: update
@@ -22,12 +22,12 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
-  
+
   mail:
     host: ${SPRING_MAIL_HOST:smtp.gmail.com}
     port: ${SPRING_MAIL_PORT:587}
-    username: ${SPRING_MAIL_USERNAME:sonvskt303@gmail.com}
-    password: ${SPRING_MAIL_PASSWORD:skes mwnj exgf zbdt}
+    username: ${SPRING_MAIL_USERNAME:your_email@gmail.com}
+    password: ${SPRING_MAIL_PASSWORD:your_app_password}
     properties:
       mail:
         smtp:
@@ -39,7 +39,7 @@ spring:
             trust: smtp.gmail.com
 
 jwt:
-  secret: ${JWT_SECRET:5367566B59703373367639792F423F4528482B4D6251655468576D5A7134743777217A25432A462D4A404E635266556A586E3272357538782F413F4428472B4B}
+  secret: ${JWT_SECRET:your_secure_jwt_secret_key_here}
   expiration: ${JWT_EXPIRATION:86400000}
 
 app:
@@ -49,4 +49,10 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
