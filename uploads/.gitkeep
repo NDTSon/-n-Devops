@@ -1,0 +1,8 @@
+# Keep this directory for local file uploads
+# Files uploaded here are ignored by Git (see .gitignore)
+#
+# Used by:
+# - File Service during local development (docker-compose)
+# - Fallback storage when SeaweedFS is not available
+#
+# In production: Files are stored in SeaweedFS distributed storage

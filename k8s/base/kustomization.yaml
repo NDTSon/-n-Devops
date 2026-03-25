@@ -2,12 +2,16 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  # Core
+  # Core infrastructure
   - namespace.yaml
   - secrets.yaml
   - ingress.yaml
 
-  # Databases
+  # Security configurations (NEW)
+  - network-policies.yaml
+  - pod-security.yaml
+
+  # Databases with enhanced security
   - user-db/deployment.yaml
   - user-db/service.yaml
   - user-db/pvc.yaml
@@ -18,7 +22,7 @@ resources:
   - file-db/service.yaml
   - file-db/pvc.yaml
 
-  # SeaweedFS (object storage)
+  # SeaweedFS (distributed object storage)
   - seaweedfs/master-deployment.yaml
   - seaweedfs/master-service.yaml
   - seaweedfs/volume-deployment.yaml
@@ -27,7 +31,7 @@ resources:
   - seaweedfs/filer-service.yaml
   - seaweedfs/pvc.yaml
 
-  # Backend services
+  # Backend microservices
   - user-service/deployment.yaml
   - user-service/service.yaml
   - blog-service/deployment.yaml
@@ -35,16 +39,27 @@ resources:
   - file-service/deployment.yaml
   - file-service/service.yaml
 
-  # Frontend
+  # Frontend application
   - frontend/deployment.yaml
   - frontend/service.yaml
 
+# Enhanced labeling for better organization and security
 labels:
   - includeSelectors: true
     pairs:
       app.kubernetes.io/part-of: blog-platform
+      environment: development
+      security.blog-platform/scanned: "true"
+      security.blog-platform/compliance: "restricted"
+
+# Resource transformations for consistency
+commonAnnotations:
+  deployed-by: argocd
+  security.blog-platform/scan-date: "2026-03-25"
+  security.blog-platform/owner: "devops-team"
 
 # This section is automatically updated by GitLab CI
+# DO NOT MODIFY MANUALLY - CI/CD Pipeline manages image tags
 images:
   - name: registry.gitlab.com/mquangpham575/devops/user-service
     newTag: latest
@@ -54,3 +69,40 @@ images:
     newTag: latest
   - name: registry.gitlab.com/mquangpham575/devops/frontend
     newTag: latest
+
+# Configuration patches for security and performance
+# Patches are defined inline below (no separate patch files needed)
+
+# JSON/Strategic merge patches for fine-grained control
+patches:
+  # Add security context to all containers
+  - target:
+      kind: Deployment
+      labelSelector: "tier=backend"
+    patch: |-
+      - op: add
+        path: /spec/template/spec/securityContext
+        value:
+          runAsNonRoot: true
+          runAsUser: 1000
+          runAsGroup: 3000
+          fsGroup: 2000
+
+  # Add resource limits to all backend containers
+  - target:
+      kind: Deployment
+      labelSelector: "tier=backend"
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+
+  # Note: Liveness and readiness probes are defined in individual deployment files
+  # Each service has its own port (user-service: 8081, blog-service: 8082, file-service: 8083)
+  # Do NOT add generic probes here as they would override service-specific configurations

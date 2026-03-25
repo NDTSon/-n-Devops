@@ -5,8 +5,11 @@ namespace: monitoring
 resources:
   - prometheus.yaml
   - grafana.yaml
+  - grafana-secrets.yaml
+  - grafana-dashboards.yaml
 
 labels:
   - includeSelectors: true
     pairs:
       app.kubernetes.io/part-of: blog-platform
+      app.kubernetes.io/component: monitoring

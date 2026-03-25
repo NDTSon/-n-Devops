@@ -1,7 +1,7 @@
 services:
   # PostgreSQL for User Service
   user-db:
-    image: postgres:18-alpine
+    image: postgres:15-alpine
     container_name: user-database
     environment:
       POSTGRES_DB: user_service_db
@@ -28,7 +28,7 @@ services:
 
   # PostgreSQL for Blog Service
   blog-db:
-    image: postgres:18-alpine
+    image: postgres:15-alpine
     container_name: blog-database
     environment:
       POSTGRES_DB: blog_service_db
@@ -138,7 +138,7 @@ services:
 
   # PostgreSQL for File Service
   file-db:
-    image: postgres:18-alpine
+    image: postgres:15-alpine
     container_name: file-database
     environment:
       POSTGRES_DB: file_service_db

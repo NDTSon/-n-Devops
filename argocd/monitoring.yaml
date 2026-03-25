@@ -1,27 +1,111 @@
-# ArgoCD Application — watches k8s/monitoring and syncs to monitoring namespace
+# Enhanced ArgoCD Application for monitoring stack
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: monitoring
   namespace: argocd
+  labels:
+    app.kubernetes.io/name: monitoring
+    app.kubernetes.io/part-of: blog-platform
+    app.kubernetes.io/managed-by: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2" # Deploy after main app
+    notifications.argoproj.io/subscribe.on-deployed.slack: monitoring
+    notifications.argoproj.io/subscribe.on-health-degraded.slack: monitoring
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
 spec:
   project: blog-platform
+
+  # Source configuration
   source:
     repoURL: https://gitlab.com/mquangpham575/DevOps.git
     targetRevision: HEAD
     path: k8s/monitoring
+
+    # Kustomize configuration for monitoring
+    kustomize:
+      namePrefix: ""
+      nameSuffix: ""
+      commonLabels:
+        app.kubernetes.io/part-of: blog-platform-monitoring
+        environment: development
+      commonAnnotations:
+        deployed-by: argocd
+        monitoring-stack: prometheus-grafana
+
+  # Destination
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
+
+  # Enhanced sync policy for monitoring stack
   syncPolicy:
     automated:
-      prune: true
-      selfHeal: true
+      prune: true # Clean up unused monitoring resources
+      selfHeal: true # Auto-heal monitoring configuration
+      allowEmpty: false
+
     syncOptions:
       - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=false # Don't prune monitoring resources last (they're critical)
+      - ApplyOutOfSyncOnly=true
+      - RespectIgnoreDifferences=true
+      - ServerSideApply=false
+
+    # Monitoring stack retry configuration
     retry:
       limit: 3
       backoff:
-        duration: 5s
+        duration: 10s # Longer wait for monitoring components
         factor: 2
-        maxDuration: 3m
+        maxDuration: 5m # Monitoring can take longer to stabilize
+
+  # Resource health and diff configuration
+  ignoreDifferences:
+    # Prometheus configuration may be updated by operator
+    - group: ""
+      kind: Secret
+      jsonPointers:
+        - /data
+
+    # Grafana dashboards may be updated dynamically
+    - group: ""
+      kind: ConfigMap
+      jsonPointers:
+        - /data
+
+    # Ignore prometheus data directory differences
+    - group: apps
+      kind: StatefulSet
+      name: prometheus-*
+      jsonPointers:
+        - /spec/volumeClaimTemplates
+
+    # Ignore differences in monitoring resource requests (updated by VPA)
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/template/spec/containers/0/resources/requests
+
+  # Application information
+  info:
+    - name: "Stack"
+      value: "Prometheus + Grafana"
+    - name: "Purpose"
+      value: "Application and Infrastructure Monitoring"
+    - name: "Dashboards"
+      value: "Spring Boot, JVM, Kubernetes"
+    - name: "Alerts"
+      value: "Application Health, Resource Usage"
+
+  # Operation configuration for monitoring
+  operation:
+    sync:
+      syncOptions:
+        - CreateNamespace=true
+        - ApplyOutOfSyncOnly=true
+
+  # Revision history
+  revisionHistoryLimit: 5

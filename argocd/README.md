@@ -1,41 +1,55 @@
 # ArgoCD Configuration
 
-## ⚠️ Important: Secrets Setup
+GitOps configuration files for blog platform deployment.
 
-The files in this directory contain **secret templates** that must be configured locally.
+## Files
 
-### How to Set Up Secrets
+| File | Purpose |
+|------|---------|
+| `project.yaml` | ArgoCD AppProject with resource permissions |
+| `blog-app.yaml` | Main application deployment |
+| `monitoring.yaml` | Prometheus + Grafana stack |
+| `ingress.yaml` | ArgoCD UI ingress |
+| `rbac-config.yaml` | Role-based access control |
+| `gitlab-repo-secret.yaml.template` | GitLab repository access template |
 
-1. **Copy the template:**
+## Setup
 
-   ```bash
-   cp gitlab-repo-secret.yaml.template gitlab-repo-secret.yaml
-   ```
+```bash
+# 1. Configure repository access
+cp gitlab-repo-secret.yaml.template gitlab-repo-secret.yaml
+# Edit gitlab-repo-secret.yaml with your GitLab PAT
+kubectl apply -f gitlab-repo-secret.yaml
 
-2. **Edit the file and replace placeholders:**
+# 2. Deploy applications
+kubectl apply -f project.yaml
+kubectl apply -f blog-app.yaml
+kubectl apply -f monitoring.yaml
+```
 
-   ```bash
-   # Replace <YOUR_GITLAB_PAT_TOKEN> with the actual PAT from infor.md
-   ```
+## Access
 
-3. **Apply to cluster:**
-   ```bash
-   kubectl apply -f argocd/gitlab-repo-secret.yaml
-   ```
+- **URL**: `https://argocd.local:8443`
+- **Username**: `admin`
+- **Password**:
+  ```bash
+  kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+  ```
 
-### ⚠️ NEVER COMMIT SECRETS!
+## Troubleshooting
 
-- ❌ `gitlab-repo-secret.yaml` (contains actual credentials) - **IGNORED by Git**
-- ✅ `gitlab-repo-secret.yaml.template` (safe to commit) - **Template only**
+```bash
+# Check status
+kubectl get applications -n argocd
 
-The `.gitignore` file prevents accidental commits of secret files.
+# Force sync
+argocd app sync blog-app --force
 
-### Where to Get Credentials
+# View logs
+kubectl logs -n argocd deployment/argocd-server -f
+```
 
-Check the `infor.md` file (also gitignored) for:
+## Resources
 
-- GitLab Personal Access Token (PAT)
-- GitLab username
-- Other sensitive credentials
-
-**Note:** If you don't have `infor.md`, ask the project owner for credentials.
+- [ArgoCD Documentation](https://argo-cd.readthedocs.io/)
+- [Main README](../README.md)

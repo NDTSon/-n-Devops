@@ -1,35 +1,118 @@
 # Git ignore
 .env
+.env.local
+.env.*.local
 
 # IDE
-.idea
-.vscode
+.idea/
+.vscode/
 *.iml
+*.swp
+*.swo
+*~
 
 # OS
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # Logs
 *.log
+logs/
+*.log.*
 
 # Maven
 target/
 .mvn/
 mvnw
 mvnw.cmd
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+
+# Gradle (if used)
+.gradle/
+gradle/
+gradlew
+gradlew.bat
 
 # Node
 node_modules/
-dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 .npm
-
-# Build
+.yarn/
+dist/
 build/
-out/
-infor.md
 
-# Secrets (DO NOT COMMIT)
+# Build artifacts
+out/
+bin/
+classes/
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+.docker/
+*.dockerfile.backup
+
+# Kubernetes temporary files
+*.kubeconfig
+kubeconfig
+*.yaml.bak
+*.yml.bak
+kustomization.yaml.tmp
+
+# Security & Secrets (DO NOT COMMIT)
+infor.md
 argocd/gitlab-repo-secret.yaml
 *secret*.yaml
 *.secret
+*.key
+*.pem
+*.p12
+*.pfx
+.env.production
+.env.staging
+credentials.json
+service-account.json
+config.json
+
+# Backup files
+*.backup
+*.bak
+*.orig
+*.rej
+*~
+.#*
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Cache directories
+.cache/
+.npm/
+.yarn-integrity
+
+# Coverage reports
+coverage/
+*.coverage
+.nyc_output/
+.coverage/
+
+# Monitoring & Debugging
+*.hprof
+hs_err_pid*
+core.*
+
+# Test artifacts
+test-results/
+test-output/
+*.test.log

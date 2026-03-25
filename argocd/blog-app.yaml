@@ -1,27 +1,67 @@
-# ArgoCD Application — watches k8s/overlays/dev and syncs to blog-app namespace
+# ArgoCD Application for Blog Platform
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: blog-app
   namespace: argocd
+  labels:
+    app.kubernetes.io/name: blog-app
+    app.kubernetes.io/part-of: blog-platform
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
 spec:
   project: blog-platform
+
+  # Source configuration
   source:
     repoURL: https://gitlab.com/mquangpham575/DevOps.git
     targetRevision: HEAD
     path: k8s/overlays/dev
+    kustomize:
+      commonLabels:
+        app.kubernetes.io/part-of: blog-platform
+        environment: development
+
+  # Destination
   destination:
     server: https://kubernetes.default.svc
     namespace: blog-app
+
+  # Sync policy with automation
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - PruneLast=true
+      - ApplyOutOfSyncOnly=true
     retry:
       limit: 3
       backoff:
         duration: 5s
         factor: 2
-        maxDuration: 3m
+        maxDuration: 1m
+
+  # Revision history limit
+  revisionHistoryLimit: 5
+
+  # Ignore differences for dynamic resources
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+    - group: ""
+      kind: Pod
+      jsonPointers:
+        - /spec/containers/0/resources/requests
+
+  # Application info
+  info:
+    - name: Environment
+      value: Development
+    - name: Course
+      value: NT548.Q21
