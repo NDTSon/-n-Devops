@@ -1,0 +1,27 @@
+# ArgoCD Application — watches k8s/monitoring and syncs to monitoring namespace
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring
+  namespace: argocd
+spec:
+  project: blog-platform
+  source:
+    repoURL: https://gitlab.com/mquangpham575/DevOps.git
+    targetRevision: outside-monitoring
+    path: k8s/monitoring
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

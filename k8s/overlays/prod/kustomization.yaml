@@ -1,0 +1,17 @@
+# Prod overlay — for k3s server deployment
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+# Override images with specific tags (updated by CI)
+images:
+  - name: registry.gitlab.com/mquangpham575/devops/user-service
+    newTag: latest
+  - name: registry.gitlab.com/mquangpham575/devops/blog-service
+    newTag: latest
+  - name: registry.gitlab.com/mquangpham575/devops/file-service
+    newTag: latest
+  - name: registry.gitlab.com/mquangpham575/devops/frontend
+    newTag: latest
