@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
         - name: seaweedfs-filer
-          image: chrislusf/seaweedfs:latest
+          image: chrislusf/seaweedfs:2.94
           command: ["weed"]
           args: ["filer", "-ip=seaweedfs-filer", "-ip.bind=0.0.0.0", "-port=8888", "-master=seaweedfs-master:9333"]
           ports:

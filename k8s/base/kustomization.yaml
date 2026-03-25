@@ -43,3 +43,15 @@ labels:
   - includeSelectors: true
     pairs:
       app.kubernetes.io/part-of: blog-platform
+
+# This section is automatically updated by GitLab CI
+images:
+  - name: registry.gitlab.com/mquangpham575/devops/user-service
+    newTag: latest
+  - name: registry.gitlab.com/mquangpham575/devops/blog-service
+    newTag: latest
+  - name: registry.gitlab.com/mquangpham575/devops/file-service
+    newTag: latest
+  - name: registry.gitlab.com/mquangpham575/devops/frontend
+    newTag: latest
+

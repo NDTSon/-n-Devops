@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
         - name: seaweedfs-master
-          image: chrislusf/seaweedfs:latest
+          image: chrislusf/seaweedfs:2.94
           command: ["weed"]
           args: ["master", "-ip=seaweedfs-master", "-ip.bind=0.0.0.0", "-port=9333", "-mdir=/data"]
           ports:

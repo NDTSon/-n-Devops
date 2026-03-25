@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: grafana
-          image: grafana/grafana:latest
+          image: grafana/grafana:10.4.0
           ports:
             - containerPort: 3000
           env:
@@ -81,7 +81,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: prometheus.localhost
+    - host: prometheus.local
       http:
         paths:
           - path: /
@@ -91,7 +91,7 @@ spec:
                 name: prometheus
                 port:
                   number: 9090
-    - host: grafana.localhost
+    - host: grafana.local
       http:
         paths:
           - path: /

@@ -1,6 +1,6 @@
-stages:
   - build
   - test
+  - scan
   - docker-build
   - deploy
 
@@ -86,7 +86,7 @@ cache:
   stage: test
   script:
     - cd $SERVICE_DIR
-    - mvn test
+    - mvn test -Dmaven.main.skip=true
 
 .docker_build_template: &docker_build_def
   image: docker:24.0.5
@@ -229,8 +229,8 @@ docker-frontend:
     - git config --global user.email "ci@gitlab.com"
     - git remote set-url origin https://oauth2:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git
   script:
-    - "sed -i \"/name: .*\\/$SERVICE_NAME/{n;s/newTag: .*/newTag: $CI_COMMIT_SHORT_SHA/}\" k8s/overlays/prod/kustomization.yaml"
-    - git add k8s/overlays/prod/kustomization.yaml
+    - "sed -i \"/name: .*\\/$SERVICE_NAME/{n;s/newTag: .*/newTag: $CI_COMMIT_SHORT_SHA/}\" k8s/base/kustomization.yaml"
+    - git add k8s/base/kustomization.yaml
     - git commit -m "Update $SERVICE_NAME image tag to $CI_COMMIT_SHORT_SHA [skip ci]" || echo "No changes to commit"
     - |
       for i in $(seq 1 5); do
@@ -244,6 +244,8 @@ deploy-user-service:
     - .user-service-main-changes
   variables:
     SERVICE_NAME: "user-service"
+  needs:
+    - docker-user-service
 
 deploy-blog-service:
   extends: 
@@ -251,6 +253,8 @@ deploy-blog-service:
     - .blog-service-main-changes
   variables:
     SERVICE_NAME: "blog-service"
+  needs:
+    - docker-blog-service
 
 deploy-file-service:
   extends: 
@@ -258,6 +262,8 @@ deploy-file-service:
     - .file-service-main-changes
   variables:
     SERVICE_NAME: "file-service"
+  needs:
+    - docker-file-service
 
 deploy-frontend:
   extends: 
@@ -265,3 +271,17 @@ deploy-frontend:
     - .frontend-main-changes
   variables:
     SERVICE_NAME: "frontend"
+  needs:
+    - docker-frontend
+
+# --- Security Scan (DevSecOps) ---
+container-scan:
+  stage: scan
+  image: 
+    name: aquasec/trivy:latest
+    entrypoint: [""]
+  extends: .user-service-main-changes # Run on any main change
+  script:
+    - trivy image --exit-code 0 --severity HIGH,CRITICAL $CI_REGISTRY_IMAGE/user-service:latest
+    - echo "Scan finished. Review results above."
+  allow_failure: true

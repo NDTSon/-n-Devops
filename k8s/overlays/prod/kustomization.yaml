@@ -6,12 +6,4 @@ resources:
   - ../../base
 
 # Override images with specific tags (updated by CI)
-images:
-  - name: registry.gitlab.com/mquangpham575/devops/user-service
-    newTag: latest
-  - name: registry.gitlab.com/mquangpham575/devops/blog-service
-    newTag: latest
-  - name: registry.gitlab.com/mquangpham575/devops/file-service
-    newTag: latest
-  - name: registry.gitlab.com/mquangpham575/devops/frontend
-    newTag: latest
+# (Now moved to k8s/base/kustomization.yaml for global inheritance)
