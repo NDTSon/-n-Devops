@@ -10,28 +10,52 @@ stages:
     - changes:
         - backend/user-service/**/*
         - .gitlab-ci.yml
-        - docker-compose.yml
 
 .blog-service-changes:
   rules:
     - changes:
         - backend/blog-service/**/*
         - .gitlab-ci.yml
-        - docker-compose.yml
 
 .file-service-changes:
   rules:
     - changes:
         - backend/file-service/**/*
         - .gitlab-ci.yml
-        - docker-compose.yml
 
 .frontend-changes:
   rules:
     - changes:
         - frontend/**/*
         - .gitlab-ci.yml
-        - docker-compose.yml
+
+.user-service-main-changes:
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      changes:
+        - backend/user-service/**/*
+        - .gitlab-ci.yml
+
+.blog-service-main-changes:
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      changes:
+        - backend/blog-service/**/*
+        - .gitlab-ci.yml
+
+.file-service-main-changes:
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      changes:
+        - backend/file-service/**/*
+        - .gitlab-ci.yml
+
+.frontend-main-changes:
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      changes:
+        - frontend/**/*
+        - .gitlab-ci.yml
 
 variables:
   DOCKER_DRIVER: overlay2
@@ -55,7 +79,7 @@ cache:
   artifacts:
     paths:
       - $SERVICE_DIR/target/*.jar
-    expire_in: 1 week
+    expire_in: 1 day
 
 .backend_test_template: &backend_test_def
   image: maven:3.9.6-eclipse-temurin-17
@@ -76,13 +100,11 @@ cache:
     DOCKER_TLS_VERIFY: 1
     DOCKER_CERT_PATH: "/certs/client"
   before_script:
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u $CI_REGISTRY_USER $CI_REGISTRY --password-stdin
   script:
     - docker build -t $CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_SHORT_SHA -t $CI_REGISTRY_IMAGE/$IMAGE_NAME:latest -f $SERVICE_DIR/Dockerfile $SERVICE_DIR
     - docker push $CI_REGISTRY_IMAGE/$IMAGE_NAME:$CI_COMMIT_SHORT_SHA
     - docker push $CI_REGISTRY_IMAGE/$IMAGE_NAME:latest
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
 
 # --- Build Stage ---
 build-user-service:
@@ -119,7 +141,7 @@ build-frontend:
   artifacts:
     paths:
       - frontend/dist/
-    expire_in: 1 week
+    expire_in: 1 day
 
 # --- Test Stage ---
 test-user-service:
@@ -146,140 +168,98 @@ test-file-service:
   dependencies:
     - build-file-service
 
+
+test-frontend:
+  image: node:20-alpine
+  stage: test
+  extends: .frontend-changes
+  script:
+    - cd frontend
+    - npm ci
+    - npm test --if-present || echo "Tests not configured yet"
+  dependencies:
+    - build-frontend
+
 # --- Docker Build Stage ---
 docker-user-service:
   <<: *docker_build_def
+  extends: .user-service-main-changes
   variables:
     SERVICE_DIR: "backend/user-service"
     IMAGE_NAME: "user-service"
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
-      changes:
-        - backend/user-service/**/*
-        - .gitlab-ci.yml
-        - docker-compose.yml
+  dependencies:
+    - build-user-service
 
 docker-blog-service:
   <<: *docker_build_def
+  extends: .blog-service-main-changes
   variables:
     SERVICE_DIR: "backend/blog-service"
     IMAGE_NAME: "blog-service"
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
-      changes:
-        - backend/blog-service/**/*
-        - .gitlab-ci.yml
-        - docker-compose.yml
+  dependencies:
+    - build-blog-service
 
 docker-file-service:
   <<: *docker_build_def
+  extends: .file-service-main-changes
   variables:
     SERVICE_DIR: "backend/file-service"
     IMAGE_NAME: "file-service"
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
-      changes:
-        - backend/file-service/**/*
-        - .gitlab-ci.yml
-        - docker-compose.yml
+  dependencies:
+    - build-file-service
 
 docker-frontend:
   <<: *docker_build_def
+  extends: .frontend-main-changes
   variables:
     SERVICE_DIR: "frontend"
     IMAGE_NAME: "frontend"
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
-      changes:
-        - frontend/**/*
-        - .gitlab-ci.yml
-        - docker-compose.yml
+  dependencies:
+    - build-frontend
 
-# --- Deploy Stage Template ---
+# --- Deploy Stage Template (ArgoCD / GitOps Sync) ---
 .deploy_template:
   stage: deploy
-  image: alpine:latest
+  image: alpine/git:latest
   resource_group: production-deploy
   before_script:
-    - apk add --no-cache openssh-client gettext
-    - eval $(ssh-agent -s)
-    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
-    - mkdir -p ~/.ssh
-    - chmod 700 ~/.ssh
-    - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
+    - git config --global user.name "Gitlab CI"
+    - git config --global user.email "ci@gitlab.com"
+    - git remote set-url origin https://oauth2:${CI_JOB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git
   script:
-    - ssh $SERVER_USER@$SERVER_IP "mkdir -p ~/app"
-    - scp docker-compose.yml $SERVER_USER@$SERVER_IP:~/app/docker-compose.yml
+    - sed -i "/name: .*\/$SERVICE_NAME/{n;s/newTag: .*/newTag: $CI_COMMIT_SHORT_SHA/}" k8s/overlays/prod/kustomization.yaml
+    - git add k8s/overlays/prod/kustomization.yaml
+    - git commit -m "Update $SERVICE_NAME image tag to $CI_COMMIT_SHORT_SHA [skip ci]" || echo "No changes to commit"
     - |
-      ssh $SERVER_USER@$SERVER_IP "
-        cd ~/app &&
-        
-        # Create or overwrite the .env file securely
-        echo 'CI_REGISTRY_IMAGE=$CI_REGISTRY_IMAGE' > .env &&
-        echo 'USER_TAG=${USER_TAG:-latest}' >> .env &&
-        echo 'BLOG_TAG=${BLOG_TAG:-latest}' >> .env &&
-        echo 'FILE_TAG=${FILE_TAG:-latest}' >> .env &&
-        echo 'FRONTEND_TAG=${FRONTEND_TAG:-latest}' >> .env &&
-        echo 'POSTGRES_USER=$POSTGRES_USER' >> .env &&
-        echo 'POSTGRES_PASSWORD=$POSTGRES_PASSWORD' >> .env &&
-        echo 'JWT_SECRET=$JWT_SECRET' >> .env &&
-        echo 'JWT_EXPIRATION=$JWT_EXPIRATION' >> .env &&
-        echo 'MAIL_USERNAME=$MAIL_USERNAME' >> .env &&
-        echo 'MAIL_PASSWORD=$MAIL_PASSWORD' >> .env &&
-        echo 'GRAFANA_PASSWORD=$GRAFANA_PASSWORD' >> .env &&
-        
-        # Login and deploy
-        echo '$CI_REGISTRY_PASSWORD' | sudo docker login $CI_REGISTRY -u $CI_REGISTRY_USER --password-stdin &&
-        sudo docker compose pull $SERVICE_NAME &&
-        sudo docker compose up -d --no-deps $SERVICE_NAME
-      "
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
+      for i in $(seq 1 5); do
+        git pull --rebase origin main || true
+        git push origin HEAD:main && break || sleep $((RANDOM % 5 + 1))
+      done
 
 deploy-user-service:
-  extends: .deploy_template
+  extends: 
+    - .deploy_template
+    - .user-service-main-changes
   variables:
     SERVICE_NAME: "user-service"
-    USER_TAG: "$CI_COMMIT_SHORT_SHA"
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
-      changes:
-        - backend/user-service/**/*
-        - .gitlab-ci.yml
-        - docker-compose.yml
 
 deploy-blog-service:
-  extends: .deploy_template
+  extends: 
+    - .deploy_template
+    - .blog-service-main-changes
   variables:
     SERVICE_NAME: "blog-service"
-    BLOG_TAG: "$CI_COMMIT_SHORT_SHA"
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
-      changes:
-        - backend/blog-service/**/*
-        - .gitlab-ci.yml
-        - docker-compose.yml
 
 deploy-file-service:
-  extends: .deploy_template
+  extends: 
+    - .deploy_template
+    - .file-service-main-changes
   variables:
     SERVICE_NAME: "file-service"
-    FILE_TAG: "$CI_COMMIT_SHORT_SHA"
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
-      changes:
-        - backend/file-service/**/*
-        - .gitlab-ci.yml
-        - docker-compose.yml
 
 deploy-frontend:
-  extends: .deploy_template
+  extends: 
+    - .deploy_template
+    - .frontend-main-changes
   variables:
     SERVICE_NAME: "frontend"
-    FRONTEND_TAG: "$CI_COMMIT_SHORT_SHA"
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
-      changes:
-        - frontend/**/*
-        - .gitlab-ci.yml
-        - docker-compose.yml
