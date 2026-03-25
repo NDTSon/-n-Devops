@@ -1,0 +1,45 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  # Core
+  - namespace.yaml
+  - secrets.yaml
+  - ingress.yaml
+
+  # Databases
+  - user-db/deployment.yaml
+  - user-db/service.yaml
+  - user-db/pvc.yaml
+  - blog-db/deployment.yaml
+  - blog-db/service.yaml
+  - blog-db/pvc.yaml
+  - file-db/deployment.yaml
+  - file-db/service.yaml
+  - file-db/pvc.yaml
+
+  # SeaweedFS (object storage)
+  - seaweedfs/master-deployment.yaml
+  - seaweedfs/master-service.yaml
+  - seaweedfs/volume-deployment.yaml
+  - seaweedfs/volume-service.yaml
+  - seaweedfs/filer-deployment.yaml
+  - seaweedfs/filer-service.yaml
+  - seaweedfs/pvc.yaml
+
+  # Backend services
+  - user-service/deployment.yaml
+  - user-service/service.yaml
+  - blog-service/deployment.yaml
+  - blog-service/service.yaml
+  - file-service/deployment.yaml
+  - file-service/service.yaml
+
+  # Frontend
+  - frontend/deployment.yaml
+  - frontend/service.yaml
+
+labels:
+  - includeSelectors: true
+    pairs:
+      app.kubernetes.io/part-of: blog-platform

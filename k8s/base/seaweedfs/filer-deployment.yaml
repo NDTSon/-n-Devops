@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: seaweedfs-filer
+  namespace: blog-app
+  labels:
+    app: seaweedfs-filer
+    tier: storage
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: seaweedfs-filer
+  template:
+    metadata:
+      labels:
+        app: seaweedfs-filer
+        tier: storage
+    spec:
+      containers:
+        - name: seaweedfs-filer
+          image: chrislusf/seaweedfs:latest
+          command: ["weed"]
+          args: ["filer", "-ip=seaweedfs-filer", "-ip.bind=0.0.0.0", "-port=8888", "-master=seaweedfs-master:9333"]
+          ports:
+            - containerPort: 8888
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "300m"
+      # No PVC needed — filer uses master/volume for data

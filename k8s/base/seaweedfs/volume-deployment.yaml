@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: seaweedfs-volume
+  namespace: blog-app
+  labels:
+    app: seaweedfs-volume
+    tier: storage
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: seaweedfs-volume
+  template:
+    metadata:
+      labels:
+        app: seaweedfs-volume
+        tier: storage
+    spec:
+      containers:
+        - name: seaweedfs-volume
+          image: chrislusf/seaweedfs:latest
+          command: ["weed"]
+          args: ["volume", "-ip=seaweedfs-volume", "-ip.bind=0.0.0.0", "-port=8080", "-mserver=seaweedfs-master:9333", "-dir=/data"]
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: seaweedfs-volume-pvc
