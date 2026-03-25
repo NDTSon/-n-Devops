@@ -47,11 +47,11 @@ labels:
 # This section is automatically updated by GitLab CI
 images:
   - name: registry.gitlab.com/mquangpham575/devops/user-service
-    newTag: pending-ci-build
+    newTag: latest
   - name: registry.gitlab.com/mquangpham575/devops/blog-service
-    newTag: pending-ci-build
+    newTag: latest
   - name: registry.gitlab.com/mquangpham575/devops/file-service
-    newTag: pending-ci-build
+    newTag: latest
   - name: registry.gitlab.com/mquangpham575/devops/frontend
-    newTag: pending-ci-build
+    newTag: latest
 
