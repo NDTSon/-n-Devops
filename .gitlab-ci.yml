@@ -312,17 +312,17 @@ docker-frontend:
     name: alpine/git:latest
     entrypoint: [""]
   variables:
-    GIT_STRATEGY: clone  # Ensure we have full git history for operations
-    GIT_DEPTH: 50       # Enough depth for rebase operations
-  resource_group: production-deploy-$SERVICE_NAME  # Prevent concurrent deploys per service
+    GIT_STRATEGY: clone # Ensure we have full git history for operations
+    GIT_DEPTH: 50 # Enough depth for rebase operations
+  resource_group: production-deploy-$SERVICE_NAME # Prevent concurrent deploys per service
   before_script:
     - echo "🚀 Deploying $SERVICE_NAME with image tag $CI_COMMIT_SHORT_SHA"
-    - echo "📋 Pipeline: $CI_PIPELINE_URL"
-    - echo "📝 Commit: $CI_COMMIT_TITLE"
+    - 'echo "📋 Pipeline: $CI_PIPELINE_URL"'
+    - 'echo "📝 Commit: $CI_COMMIT_TITLE"'
     # Enhanced git configuration
     - git config --global user.name "GitLab CI/CD [Bot]"
     - git config --global user.email "ci+$CI_PROJECT_ID@gitlab.com"
-    - git config --global pull.rebase false  # Use merge strategy for stability
+    - git config --global pull.rebase false # Use merge strategy for stability
     # Use deploy token for better security (fallback to job token)
     - |
       if [ -n "$CI_DEPLOY_TOKEN" ]; then
