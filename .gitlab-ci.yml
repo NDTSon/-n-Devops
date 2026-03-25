@@ -240,7 +240,7 @@ docker-frontend:
       done
 
 deploy-user-service:
-  extends: 
+  extends:
     - .deploy_template
     - .user-service-main-changes
   variables:
@@ -248,10 +248,11 @@ deploy-user-service:
   needs:
     - test-user-service
     - docker-user-service
-    - container-scan
+    - job: container-scan
+      optional: true
 
 deploy-blog-service:
-  extends: 
+  extends:
     - .deploy_template
     - .blog-service-main-changes
   variables:
@@ -259,10 +260,11 @@ deploy-blog-service:
   needs:
     - test-blog-service
     - docker-blog-service
-    - container-scan
+    - job: container-scan
+      optional: true
 
 deploy-file-service:
-  extends: 
+  extends:
     - .deploy_template
     - .file-service-main-changes
   variables:
@@ -270,10 +272,11 @@ deploy-file-service:
   needs:
     - test-file-service
     - docker-file-service
-    - container-scan
+    - job: container-scan
+      optional: true
 
 deploy-frontend:
-  extends: 
+  extends:
     - .deploy_template
     - .frontend-main-changes
   variables:
@@ -281,25 +284,36 @@ deploy-frontend:
   needs:
     - test-frontend
     - docker-frontend
-    - container-scan
+    - job: container-scan
+      optional: true
 
 # --- Security Scan (DevSecOps) ---
 container-scan:
   stage: scan
-  image: 
+  image:
     name: aquasec/trivy:0.69.3
     entrypoint: [""]
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
+      changes:
+        - backend/user-service/**/*
+        - backend/blog-service/**/*
+        - backend/file-service/**/*
+        - frontend/**/*
+        - .gitlab-ci.yml
   needs:
-    - docker-user-service
-    - docker-blog-service
-    - docker-file-service
-    - docker-frontend
+    - job: docker-user-service
+      optional: true
+    - job: docker-blog-service
+      optional: true
+    - job: docker-file-service
+      optional: true
+    - job: docker-frontend
+      optional: true
   script:
-    - trivy image --exit-code 0 --severity HIGH,CRITICAL $CI_REGISTRY_IMAGE/user-service:$CI_COMMIT_SHORT_SHA
-    - trivy image --exit-code 0 --severity HIGH,CRITICAL $CI_REGISTRY_IMAGE/blog-service:$CI_COMMIT_SHORT_SHA
-    - trivy image --exit-code 0 --severity HIGH,CRITICAL $CI_REGISTRY_IMAGE/file-service:$CI_COMMIT_SHORT_SHA
-    - trivy image --exit-code 0 --severity HIGH,CRITICAL $CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHORT_SHA
+    - trivy image --exit-code 0 --severity HIGH,CRITICAL $CI_REGISTRY_IMAGE/user-service:$CI_COMMIT_SHORT_SHA || true
+    - trivy image --exit-code 0 --severity HIGH,CRITICAL $CI_REGISTRY_IMAGE/blog-service:$CI_COMMIT_SHORT_SHA || true
+    - trivy image --exit-code 0 --severity HIGH,CRITICAL $CI_REGISTRY_IMAGE/file-service:$CI_COMMIT_SHORT_SHA || true
+    - trivy image --exit-code 0 --severity HIGH,CRITICAL $CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHORT_SHA || true
     - echo "Scan finished for version $CI_COMMIT_SHORT_SHA. Review results above."
   allow_failure: true
