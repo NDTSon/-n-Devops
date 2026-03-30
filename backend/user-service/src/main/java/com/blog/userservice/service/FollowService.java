@@ -1,25 +1,29 @@
 package com.blog.userservice.service;
 
+import com.blog.userservice.client.InteractionServiceClient;
 import com.blog.userservice.dto.FollowResponse;
 import com.blog.userservice.model.Follow;
 import com.blog.userservice.model.User;
 import com.blog.userservice.repository.FollowRepository;
 import com.blog.userservice.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class FollowService {
 
     private final FollowRepository followRepository;
     private final UserRepository userRepository;
-    private final NotificationService notificationService;
+    private final InteractionServiceClient interactionServiceClient;
 
     @Transactional
     public void followUser(UUID followerId, UUID followingId) {
@@ -47,8 +51,16 @@ public class FollowService {
         User follower = userRepository.findById(followerId)
                 .orElseThrow(() -> new IllegalArgumentException("Follower not found"));
 
-        // Send notification to the followed user
-        notificationService.createFollowNotification(followingId, followerId, follower.getUsername());
+        // Send notification to the followed user via interaction-service
+        try {
+            interactionServiceClient.notifyNewFollower(Map.of(
+                "userId", followingId.toString(),
+                "actorId", followerId.toString(),
+                "actorUsername", follower.getUsername()
+            ));
+        } catch (Exception e) {
+            log.warn("Failed to send follow notification: {}", e.getMessage());
+        }
     }
 
     @Transactional

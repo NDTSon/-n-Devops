@@ -17,11 +17,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class BlogService {
+
+    private static final Pattern FILE_DOWNLOAD_PATTERN = Pattern.compile(".*/api/files/download/(\\d+)$");
 
     private final BlogRepository blogRepository;
     private final CategoryRepository categoryRepository;
@@ -118,7 +122,7 @@ public class BlogService {
                 .content(request.getContent())
                 .description(request.getDescription())
                 .imageUrl(request.getImageUrl())
-                .imageFileId(request.getImageFileId())
+            .imageFileId(resolveImageFileId(request.getImageFileId(), request.getImageUrl()))
                 .imageMimeType(request.getImageMimeType())
                 .originalFileName(request.getOriginalFileName())
                 .status(request.getStatus() != null ? request.getStatus() : true)
@@ -165,7 +169,7 @@ public class BlogService {
         blog.setContent(request.getContent());
         blog.setDescription(request.getDescription());
         blog.setImageUrl(request.getImageUrl());
-        blog.setImageFileId(request.getImageFileId());
+        blog.setImageFileId(resolveImageFileId(request.getImageFileId(), request.getImageUrl()));
         blog.setImageMimeType(request.getImageMimeType());
         blog.setOriginalFileName(request.getOriginalFileName());
         blog.setStatus(request.getStatus() != null ? request.getStatus() : true);
@@ -259,6 +263,11 @@ public class BlogService {
                 .map(Category::getName)
                 .orElse(null);
 
+        String resolvedImageUrl = blog.getImageUrl();
+        if ((resolvedImageUrl == null || resolvedImageUrl.isBlank()) && blog.getImageFileId() != null) {
+            resolvedImageUrl = "/api/files/download/" + blog.getImageFileId();
+        }
+
         return BlogResponse.builder()
                 .id(blog.getId())
                 .categoryId(blog.getCategoryId())
@@ -267,7 +276,7 @@ public class BlogService {
                 .title(blog.getTitle())
                 .content(blog.getContent())
                 .description(blog.getDescription())
-                .imageUrl(blog.getImageUrl())
+            .imageUrl(resolvedImageUrl)
                 .imageFileId(blog.getImageFileId())
                 .imageMimeType(blog.getImageMimeType())
                 .originalFileName(blog.getOriginalFileName())
@@ -278,6 +287,27 @@ public class BlogService {
                 .createdAt(blog.getCreatedAt())
                 .updatedAt(blog.getUpdatedAt())
                 .build();
+    }
+
+    private Long resolveImageFileId(Long imageFileId, String imageUrl) {
+        if (imageFileId != null) {
+            return imageFileId;
+        }
+
+        if (imageUrl == null || imageUrl.isBlank()) {
+            return null;
+        }
+
+        Matcher matcher = FILE_DOWNLOAD_PATTERN.matcher(imageUrl);
+        if (matcher.matches()) {
+            try {
+                return Long.parseLong(matcher.group(1));
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+
+        return null;
     }
 
     private void validateCategory(UUID categoryId) {

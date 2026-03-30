@@ -2,6 +2,7 @@ package com.blog.userservice.controller;
 
 import com.blog.userservice.dto.ChangePasswordRequest;
 import com.blog.userservice.dto.UpdateRoleRequest;
+import com.blog.userservice.dto.UpdateUserPasswordRequest;
 import com.blog.userservice.dto.UserResponse;
 import com.blog.userservice.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -55,7 +56,7 @@ public class UserController {
     }
 
     /**
-     * Update user role (Admin only)
+        * Update user role (Admin and Support with restrictions)
      */
     @PutMapping("/{id}/role")
     public ResponseEntity<?> updateUserRole(
@@ -66,26 +67,52 @@ public class UserController {
             String role = (String) httpRequest.getAttribute("role");
             UUID currentUserId = (UUID) httpRequest.getAttribute("userId");
 
-            // Check if user is admin
-            if (!"ADMIN".equals(role)) {
+            if (currentUserId == null || role == null) {
                 Map<String, String> error = new HashMap<>();
-                error.put("error", "Only administrators can update user roles");
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+                error.put("error", "User not authenticated");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
             }
 
-            // Prevent admin from changing their own role
-            if (id.equals(currentUserId)) {
-                Map<String, String> error = new HashMap<>();
-                error.put("error", "You cannot change your own role");
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
-            }
-
-            UserResponse updatedUser = userService.updateUserRole(id, request.getRole());
+            UserResponse updatedUser = userService.updateUserRoleByActor(currentUserId, role, id, request.getRole());
             return ResponseEntity.ok(updatedUser);
         } catch (Exception e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+        }
+    }
+
+    /**
+     * Update password for a user by privileged role (Admin/Support)
+     */
+    @PutMapping("/{id}/password")
+    public ResponseEntity<?> updateUserPassword(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateUserPasswordRequest request,
+            HttpServletRequest httpRequest) {
+        try {
+            String role = (String) httpRequest.getAttribute("role");
+            UUID currentUserId = (UUID) httpRequest.getAttribute("userId");
+
+            if (currentUserId == null || role == null) {
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "User not authenticated");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+            }
+
+            userService.updateUserPasswordByActor(currentUserId, role, id, request.getNewPassword());
+
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Password updated successfully");
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+        } catch (Exception e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Failed to update password: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }
 

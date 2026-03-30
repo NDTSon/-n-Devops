@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { blogAPI, categoryAPI } from '../services/api';
-import { Plus, Edit, Trash2, Calendar, Eye, Users, Pin, PinOff, FolderOpen, Search, X } from 'lucide-react';
+import { Plus, Edit, Trash2, Calendar, Eye, Users, Pin, PinOff, FolderOpen, Search, X, LifeBuoy } from 'lucide-react';
 import DeleteConfirmModal from '../components/DeleteConfirmModal';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import Spinner from '../components/Spinner';
 
 const AdminDashboard = () => {
     const { user } = useAuth();
@@ -104,7 +105,7 @@ const AdminDashboard = () => {
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
-                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary-600"></div>
+                <Spinner variant="bars" size="lg" label="Đang tải dữ liệu..." />
             </div>
         );
     }
@@ -147,6 +148,13 @@ const AdminDashboard = () => {
                             className="btn-secondary inline-flex items-center space-x-2"
                         >
                             <span>Category Management</span>
+                        </Link>
+                        <Link
+                            to="/admin/support"
+                            className="btn-secondary inline-flex items-center space-x-2"
+                        >
+                            <LifeBuoy className="h-5 w-5" />
+                            <span>Support Desk</span>
                         </Link>
                         <Link
                             to="/admin/create"

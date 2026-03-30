@@ -36,16 +36,36 @@ const CommentSection = ({ blogId }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!newComment.trim()) return;
+        const content = newComment.trim();
+        if (!content) return;
 
         setLoading(true);
         setError('');
 
+        // --- Optimistic update ---
+        const optimisticId = `optimistic-${Date.now()}`;
+        const optimisticComment = {
+            id: optimisticId,
+            blogId,
+            content,
+            authorId: user.id,
+            authorUsername: user.username,
+            createdAt: new Date().toISOString(),
+            replies: [],
+            _pending: true,
+        };
+        setComments(prev => [optimisticComment, ...prev]);
+        setNewComment('');
+        // -------------------------
+
         try {
-            await commentAPI.create({ blogId, content: newComment });
-            setNewComment('');
+            await commentAPI.create({ blogId, content });
+            // Thay thế optimistic comment bằng dữ liệu thật từ server
             fetchComments();
         } catch (error) {
+            // Rollback nếu API lỗi
+            setComments(prev => prev.filter(c => c.id !== optimisticId));
+            setNewComment(content);
             setError(error.response?.data?.error || 'Failed to post comment');
         } finally {
             setLoading(false);
@@ -207,7 +227,7 @@ const CommentSection = ({ blogId }) => {
                     </div>
                 ) : (
                     comments.map((comment) => (
-                        <div key={comment.id} className="space-y-3">
+                        <div key={comment.id} className={`space-y-3 transition-opacity duration-300 ${comment._pending ? 'opacity-60' : 'opacity-100'}`}>
                             {/* Parent Comment */}
                             <div className="p-4 bg-slate-50 rounded-lg">
                                 <div className="flex items-start justify-between mb-2">

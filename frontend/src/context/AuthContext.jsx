@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { authAPI } from '../services/api';
+import { authAPI, userAPI } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -16,21 +16,36 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Check if user is logged in on mount
+        // Check if user is logged in on mount and refresh role/profile from server.
         const token = localStorage.getItem('token');
         const userData = localStorage.getItem('user');
 
-        if (token && userData) {
-            const parsed = JSON.parse(userData);
-            // Tương thích ngược: nếu có userId thay vì id thì chuẩn hóa
-            if (parsed.userId && !parsed.id) {
-                parsed.id = parsed.userId;
-                delete parsed.userId;
-                localStorage.setItem('user', JSON.stringify(parsed));
+        const bootstrapAuth = async () => {
+            if (token && userData) {
+                const parsed = JSON.parse(userData);
+                // Tương thích ngược: nếu có userId thay vì id thì chuẩn hóa
+                if (parsed.userId && !parsed.id) {
+                    parsed.id = parsed.userId;
+                    delete parsed.userId;
+                }
+
+                setUser(parsed);
+
+                try {
+                    const response = await userAPI.getMyProfile();
+                    const freshUser = response.data;
+                    localStorage.setItem('user', JSON.stringify(freshUser));
+                    setUser(freshUser);
+                } catch {
+                    // Keep local snapshot if profile refresh fails transiently.
+                    localStorage.setItem('user', JSON.stringify(parsed));
+                }
             }
-            setUser(parsed);
-        }
-        setLoading(false);
+
+            setLoading(false);
+        };
+
+        bootstrapAuth();
     }, []);
 
     const login = async (username, password) => {

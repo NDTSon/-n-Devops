@@ -13,6 +13,7 @@ const BlogForm = () => {
         content: '',
         description: '',
         imageUrl: '',
+        imageFileId: null,
         imageMimeType: '',
         originalFileName: '',
         status: true,
@@ -51,6 +52,7 @@ const BlogForm = () => {
                 content: response.data.content || '',
                 description: response.data.description || '',
                 imageUrl: response.data.imageUrl || '',
+                imageFileId: response.data.imageFileId || null,
                 imageMimeType: response.data.imageMimeType || '',
                 originalFileName: response.data.originalFileName || '',
                 status: response.data.status !== undefined ? response.data.status : true,
@@ -91,6 +93,7 @@ const BlogForm = () => {
             setFormData(prev => ({
                 ...prev,
                 imageUrl: response.data.url,
+                imageFileId: response.data.fileId || null,
                 imageMimeType: response.data.contentType || file.type,
                 originalFileName: response.data.originalFileName || file.name,
             }));
@@ -240,7 +243,13 @@ const BlogForm = () => {
                                     <button
                                         type="button"
                                         onClick={() => {
-                                            setFormData({ ...formData, imageUrl: '' });
+                                            setFormData({
+                                                ...formData,
+                                                imageUrl: '',
+                                                imageFileId: null,
+                                                imageMimeType: '',
+                                                originalFileName: '',
+                                            });
                                             setUploadedFile(null);
                                         }}
                                         className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"

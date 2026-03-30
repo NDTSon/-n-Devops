@@ -9,3 +9,7 @@ spring:
 
 app:
   base-url: http://localhost:5173
+
+services:
+  interaction-service:
+    url: http://localhost:8086

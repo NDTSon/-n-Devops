@@ -13,13 +13,13 @@ import {
 // â”€â”€ Helper giá»‘ng BlogListPage â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const isVideoFile = (blog) => {
     if (blog.imageMimeType) return blog.imageMimeType.startsWith('video/');
-    const url = blog.imageUrl; if (!url) return false;
+    const url = blog.imageUrl || (blog.imageFileId ? `/api/files/download/${blog.imageFileId}` : ''); if (!url) return false;
     const l = url.toLowerCase();
     return l.endsWith('.mp4') || l.endsWith('.webm') || l.endsWith('.ogg') || l.endsWith('.mov') || l.endsWith('.avi');
 };
 const isDocumentFile = (blog) => {
     if (blog.imageMimeType) return blog.imageMimeType === 'application/pdf' || blog.imageMimeType.includes('word') || blog.imageMimeType.includes('document') || blog.imageMimeType.includes('spreadsheet') || blog.imageMimeType.includes('excel') || blog.imageMimeType.includes('powerpoint') || blog.imageMimeType.includes('presentation');
-    const url = blog.imageUrl; if (!url) return false; const l = url.toLowerCase();
+    const url = blog.imageUrl || (blog.imageFileId ? `/api/files/download/${blog.imageFileId}` : ''); if (!url) return false; const l = url.toLowerCase();
     return l.endsWith('.pdf') || l.endsWith('.docx') || l.endsWith('.doc') || l.endsWith('.xlsx') || l.endsWith('.xls') || l.endsWith('.ppt') || l.endsWith('.pptx');
 };
 const getFileIcon = (blog) => {
@@ -30,7 +30,7 @@ const getFileIcon = (blog) => {
         if (m.includes('word') || m.includes('document')) return { icon: FileText, color: 'text-blue-600', gradient: 'from-blue-500 to-indigo-600', borderColor: 'border-blue-200', badgeBg: 'bg-blue-100', name: 'Word' };
         if (m.includes('powerpoint') || m.includes('presentation')) return { icon: FileText, color: 'text-orange-600', gradient: 'from-orange-500 to-amber-600', borderColor: 'border-orange-200', badgeBg: 'bg-orange-100', name: 'PowerPoint' };
     }
-    const url = blog.imageUrl;
+    const url = blog.imageUrl || (blog.imageFileId ? `/api/files/download/${blog.imageFileId}` : '');
     if (!url) return { icon: File, color: 'text-slate-600', gradient: 'from-slate-400 to-slate-600', borderColor: 'border-slate-200', badgeBg: 'bg-slate-100', name: 'File' };
     const l = url.toLowerCase();
     if (l.endsWith('.pdf')) return { icon: FileText, color: 'text-red-600', gradient: 'from-red-500 to-rose-600', borderColor: 'border-red-200', badgeBg: 'bg-red-100', name: 'PDF' };
@@ -40,7 +40,7 @@ const getFileIcon = (blog) => {
 };
 const extractFileName = (blog) => {
     if (blog.originalFileName) return blog.originalFileName;
-    const url = blog.imageUrl;
+    const url = blog.imageUrl || (blog.imageFileId ? `/api/files/download/${blog.imageFileId}` : '');
     if (url && url.includes('/api/files/download/')) {
         if (blog.imageMimeType) {
             const m = blog.imageMimeType.toLowerCase();
@@ -97,6 +97,34 @@ const UserProfilePage = () => {
     const [activeTab, setActiveTab] = useState('posts'); // 'posts' | 'followers' | 'following'
     const [showEmailPublic, setShowEmailPublic] = useState(false); // own profile: current showEmail pref
     const [togglingEmail, setTogglingEmail] = useState(false);
+    const [brokenMediaUrls, setBrokenMediaUrls] = useState(new Set());
+
+    const getMediaUrl = (blog) => {
+        if (!blog) return '';
+        if (blog.imageFileId) return `/api/files/download/${blog.imageFileId}`;
+        return blog.imageUrl || '';
+    };
+
+    const markMediaBroken = (url) => {
+        if (!url) return;
+        setBrokenMediaUrls((prev) => {
+            if (prev.has(url)) return prev;
+            const next = new Set(prev);
+            next.add(url);
+            return next;
+        });
+    };
+
+    const shouldAutoPreviewMedia = (blog, url) => {
+        if (!url) return false;
+        if (!url.includes('/api/files/download/')) return true;
+
+        const mimeType = (blog.imageMimeType || '').toLowerCase();
+        if (mimeType.startsWith('image/') || mimeType.startsWith('video/')) return true;
+
+        const fileName = (blog.originalFileName || '').toLowerCase();
+        return /\.(jpg|jpeg|png|gif|webp|bmp|svg|mp4|webm|ogg|mov|avi|mkv)$/.test(fileName);
+    };
 
     const isOwnProfile = currentUser && String(currentUser.id) === String(userId);
 
@@ -373,10 +401,16 @@ const UserProfilePage = () => {
                                     style={{ animationDelay: `${index * 0.05}s` }}
                                 >
                                     <div className="mb-4 h-48 overflow-hidden rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
-                                        {blog.imageUrl ? (
+                                        {(() => {
+                                            const mediaUrl = getMediaUrl(blog);
+                                            const hasLoadableMedia = mediaUrl && !brokenMediaUrls.has(mediaUrl) && shouldAutoPreviewMedia(blog, mediaUrl);
+                                            const fi = getFileIcon(blog);
+                                            const Icon = fi.icon;
+                                            return hasLoadableMedia ? (
                                             isVideoFile(blog) ? (
-                                                <video src={blog.imageUrl} className="w-full h-full object-cover" muted loop playsInline
-                                                    onMouseEnter={e => e.target.play()} onMouseLeave={e => e.target.pause()} />
+                                                <video src={mediaUrl} className="w-full h-full object-cover" muted loop playsInline
+                                                    onMouseEnter={e => e.target.play()} onMouseLeave={e => e.target.pause()}
+                                                    onError={() => markMediaBroken(mediaUrl)} />
                                             ) : isDocumentFile(blog) ? (
                                                 (() => {
                                                     const fi = getFileIcon(blog); const Icon = fi.icon;
@@ -405,18 +439,43 @@ const UserProfilePage = () => {
                                                 })()
                                             ) : (
                                                 <div className="relative w-full h-full">
-                                                    <img src={blog.imageUrl} alt={blog.title}
+                                                    <img src={getMediaUrl(blog)} alt={blog.title}
                                                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                                                        onError={e => { e.target.style.display = 'none'; }} />
+                                                        onError={e => {
+                                                            markMediaBroken(getMediaUrl(blog));
+                                                            e.target.style.display = 'none';
+                                                        }} />
                                                 </div>
                                             )
+                                        ) : mediaUrl ? (
+                                            <div className="w-full h-full bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4 relative overflow-hidden">
+                                                <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${fi.gradient} opacity-5 rounded-full -translate-y-1/2 translate-x-1/2`} />
+                                                <div className={`absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr ${fi.gradient} opacity-5 rounded-full translate-y-1/2 -translate-x-1/2`} />
+                                                <div className={`relative bg-white rounded-xl border-2 ${fi.borderColor} p-4 shadow-sm w-full`}>
+                                                    <div className="flex justify-center mb-2">
+                                                        <div className={`inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br ${fi.gradient} shadow-md`}>
+                                                            <Icon className="w-7 h-7 text-white" strokeWidth={2} />
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex justify-center mb-2">
+                                                        <div className={`inline-flex items-center px-3 py-0.5 rounded-full ${fi.badgeBg} border ${fi.borderColor}`}>
+                                                            <span className={`text-xs font-bold ${fi.color} uppercase tracking-wider`}>{fi.name}</span>
+                                                        </div>
+                                                    </div>
+                                                    <p className="text-sm font-semibold text-slate-800 text-center line-clamp-2 px-2 mb-2">{extractFileName(blog)}</p>
+                                                    <div className="flex items-center justify-center gap-1 text-xs text-slate-500">
+                                                        <ExternalLink className="w-3 h-3" /><span>Mở trong chi tiết</span>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         ) : (
                                             <div className="w-full h-full bg-gradient-to-br from-primary-100 via-primary-50 to-slate-100 flex items-center justify-center relative overflow-hidden">
                                                 <div className="absolute top-0 right-0 w-24 h-24 bg-primary-300 opacity-20 rounded-full -translate-y-1/2 translate-x-1/2" />
                                                 <div className="absolute bottom-0 left-0 w-32 h-32 bg-primary-200 opacity-20 rounded-full translate-y-1/2 -translate-x-1/2" />
                                                 <BookOpen className="w-16 h-16 text-primary-300" strokeWidth={1.5} />
                                             </div>
-                                        )}
+                                            );
+                                            })()}
                                     </div>
                                     <div className="flex-1 flex flex-col">
                                         <div className="text-xs font-semibold text-primary-600 mb-2 uppercase tracking-wider">

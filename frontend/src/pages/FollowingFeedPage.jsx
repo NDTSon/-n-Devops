@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { blogAPI, followAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { Calendar, User, ArrowRight, BookOpen, FileText, File, ExternalLink, Users } from 'lucide-react';
+import Spinner from '../components/Spinner';
 
 const AVATAR_COLORS = [
     'from-violet-500 to-purple-600',
@@ -22,8 +23,36 @@ const FollowingFeedPage = () => {
     const [blogs, setBlogs] = useState([]);
     const [following, setFollowing] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [brokenMediaUrls, setBrokenMediaUrls] = useState(new Set());
     const { user } = useAuth();
     const navigate = useNavigate();
+
+    const getMediaUrl = (blog) => {
+        if (!blog) return '';
+        if (blog.imageFileId) return `/api/files/download/${blog.imageFileId}`;
+        return blog.imageUrl || '';
+    };
+
+    const markMediaBroken = (url) => {
+        if (!url) return;
+        setBrokenMediaUrls((prev) => {
+            if (prev.has(url)) return prev;
+            const next = new Set(prev);
+            next.add(url);
+            return next;
+        });
+    };
+
+    const shouldAutoPreviewMedia = (blog, url) => {
+        if (!url) return false;
+        if (!url.includes('/api/files/download/')) return true;
+
+        const mimeType = (blog.imageMimeType || '').toLowerCase();
+        if (mimeType.startsWith('image/') || mimeType.startsWith('video/')) return true;
+
+        const fileName = (blog.originalFileName || '').toLowerCase();
+        return /\.(jpg|jpeg|png|gif|webp|bmp|svg|mp4|webm|ogg|mov|avi|mkv)$/.test(fileName);
+    };
 
     useEffect(() => {
         if (!user) { navigate('/login'); return; }
@@ -61,7 +90,7 @@ const FollowingFeedPage = () => {
 
     const isVideoFile = (blog) => {
         if (blog.imageMimeType) return blog.imageMimeType.startsWith('video/');
-        const url = blog.imageUrl; if (!url) return false;
+        const url = getMediaUrl(blog); if (!url) return false;
         const u = url.toLowerCase();
         return u.endsWith('.mp4') || u.endsWith('.webm') || u.endsWith('.ogg') || u.endsWith('.mov') || u.endsWith('.avi');
     };
@@ -72,7 +101,7 @@ const FollowingFeedPage = () => {
             return m === 'application/pdf' || m.includes('word') || m.includes('document') ||
                    m.includes('spreadsheet') || m.includes('excel') || m.includes('powerpoint') || m.includes('presentation');
         }
-        const url = blog.imageUrl; if (!url) return false;
+        const url = getMediaUrl(blog); if (!url) return false;
         const u = url.toLowerCase();
         return u.endsWith('.pdf') || u.endsWith('.docx') || u.endsWith('.doc') ||
                u.endsWith('.xlsx') || u.endsWith('.xls') || u.endsWith('.ppt') || u.endsWith('.pptx');
@@ -80,7 +109,7 @@ const FollowingFeedPage = () => {
 
     const getFileIcon = (blog) => {
         const m = blog.imageMimeType?.toLowerCase() || '';
-        const url = (blog.imageUrl || '').toLowerCase();
+        const url = getMediaUrl(blog).toLowerCase();
         if (m === 'application/pdf' || url.endsWith('.pdf'))
             return { icon: FileText, color: 'text-red-600', gradient: 'from-red-500 to-rose-600', borderColor: 'border-red-200', badgeBg: 'bg-red-100', name: 'PDF' };
         if (m.includes('excel') || m.includes('spreadsheet') || url.endsWith('.xlsx') || url.endsWith('.xls'))
@@ -94,7 +123,7 @@ const FollowingFeedPage = () => {
 
     const extractFileName = (blog) => {
         if (blog.originalFileName) return blog.originalFileName;
-        const url = blog.imageUrl;
+        const url = getMediaUrl(blog);
         if (url && url.includes('/api/files/download/')) {
             const m = blog.imageMimeType?.toLowerCase() || '';
             if (m === 'application/pdf') return 'Document.pdf';
@@ -113,10 +142,7 @@ const FollowingFeedPage = () => {
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary-600 mx-auto mb-4" />
-                    <p className="text-slate-600 font-medium">Đang tải...</p>
-                </div>
+                <Spinner variant="orbit" size="lg" label="Đang tải feed..." />
             </div>
         );
     }
@@ -177,10 +203,16 @@ const FollowingFeedPage = () => {
                             >
                                 {/* Image / File */}
                                 <div className="mb-4 h-48 overflow-hidden rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
-                                    {blog.imageUrl ? (
+                                    {(() => {
+                                        const mediaUrl = getMediaUrl(blog);
+                                        const hasLoadableMedia = mediaUrl && !brokenMediaUrls.has(mediaUrl) && shouldAutoPreviewMedia(blog, mediaUrl);
+                                        const fi = getFileIcon(blog);
+                                        const Icon = fi.icon;
+                                        return hasLoadableMedia ? (
                                         isVideoFile(blog) ? (
-                                            <video src={blog.imageUrl} className="w-full h-full object-cover" muted loop playsInline
-                                                onMouseEnter={e => e.target.play()} onMouseLeave={e => e.target.pause()} />
+                                            <video src={mediaUrl} className="w-full h-full object-cover" muted loop playsInline
+                                                onMouseEnter={e => e.target.play()} onMouseLeave={e => e.target.pause()}
+                                                onError={() => markMediaBroken(mediaUrl)} />
                                         ) : isDocumentFile(blog) ? (() => {
                                             const fi = getFileIcon(blog); const Icon = fi.icon;
                                             return (
@@ -205,9 +237,10 @@ const FollowingFeedPage = () => {
                                             );
                                         })() : (
                                             <div className="relative w-full h-full">
-                                                <img src={blog.imageUrl} alt={blog.title}
+                                                <img src={mediaUrl} alt={blog.title}
                                                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                                                     onError={e => {
+                                                        markMediaBroken(mediaUrl);
                                                         const p = e.target.parentElement; e.target.style.display = 'none';
                                                         if (!p.querySelector('.file-fallback')) {
                                                             const d = document.createElement('div');
@@ -218,13 +251,33 @@ const FollowingFeedPage = () => {
                                                     }} />
                                             </div>
                                         )
+                                    ) : mediaUrl ? (
+                                        <div className="w-full h-full bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4 relative overflow-hidden">
+                                            <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${fi.gradient} opacity-5 rounded-full -translate-y-1/2 translate-x-1/2`} />
+                                            <div className={`absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr ${fi.gradient} opacity-5 rounded-full translate-y-1/2 -translate-x-1/2`} />
+                                            <div className={`relative bg-white rounded-xl border-2 ${fi.borderColor} p-5 shadow-sm w-full`}>
+                                                <div className="flex justify-center mb-3">
+                                                    <div className={`inline-flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-br ${fi.gradient} shadow-md`}>
+                                                        <Icon className="w-8 h-8 text-white" strokeWidth={2} />
+                                                    </div>
+                                                </div>
+                                                <div className="flex justify-center mb-3">
+                                                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${fi.color} ${fi.badgeBg} border ${fi.borderColor} uppercase tracking-wider`}>{fi.name}</span>
+                                                </div>
+                                                <p className="text-sm font-semibold text-slate-800 text-center line-clamp-2 px-2 mb-3">{extractFileName(blog)}</p>
+                                                <div className="flex items-center justify-center gap-2 text-xs text-slate-500">
+                                                    <ExternalLink className="w-3 h-3" /><span>Mở trong chi tiết</span>
+                                                </div>
+                                            </div>
+                                        </div>
                                     ) : (
                                         <div className="w-full h-full bg-gradient-to-br from-primary-100 via-primary-50 to-slate-100 flex items-center justify-center relative overflow-hidden">
                                             <div className="absolute top-0 right-0 w-24 h-24 bg-primary-300 opacity-20 rounded-full -translate-y-1/2 translate-x-1/2" />
                                             <div className="absolute bottom-0 left-0 w-32 h-32 bg-primary-200 opacity-20 rounded-full translate-y-1/2 -translate-x-1/2" />
                                             <BookOpen className="w-16 h-16 text-primary-300" strokeWidth={1.5} />
                                         </div>
-                                    )}
+                                    );
+                                    })()}
                                 </div>
 
                                 {/* Content */}

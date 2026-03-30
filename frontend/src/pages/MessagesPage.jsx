@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { messageAPI } from '../services/api';
 import { Send, MessageCircle, ArrowLeft, AlertCircle } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
+import Spinner from '../components/Spinner';
 
 const AVATAR_COLORS = [
     'from-violet-500 to-purple-600',
@@ -151,7 +152,7 @@ const MessagesPage = () => {
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
-                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary-600"></div>
+                <Spinner variant="orbit" size="lg" label="Đang tải tin nhắn..." />
             </div>
         );
     }

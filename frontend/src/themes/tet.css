@@ -1,9 +1,13 @@
+/* Nổi bật tên và role trong dropdown account */
+body.theme-tet .dropdown-menu .account-name,
+body.theme-tet .dropdown-menu .account-role {
+    color: #fff !important;
+    text-shadow: 0 1px 4px #b71c1c88, 0 0px 1px #0008;
+}
 /* ══════════════════════════════════════════════════════
    TẾT THEME — Pháo hoa · Chữ đỏ · Nền trắng
    Font: Dela Gothic One (nét đậm, góc cạnh, lễ hội rực rỡ)
    ══════════════════════════════════════════════════════ */
-
-@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&display=swap');
 
 /* ── Background ── */
 body.theme-tet {
@@ -39,6 +43,15 @@ body.theme-tet nav {
     background: rgba(255, 245, 245, 0.97) !important;
     border-bottom: 2px solid #e53935 !important;
     box-shadow: 0 2px 12px rgba(183, 28, 28, 0.15) !important;
+}
+
+body.theme-tet nav * {
+    color: #b71c1c !important;
+    text-shadow: none !important;
+}
+body.theme-tet .dropdown-menu, body.theme-tet .dropdown-menu * {
+    color: #b71c1c !important;
+    text-shadow: none !important;
 }
 
 /* ── Red text — all slate/gray text classes → red palette ── */

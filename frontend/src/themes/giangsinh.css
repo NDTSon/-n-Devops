@@ -1,9 +1,13 @@
+/* Nổi bật tên và role trong dropdown account */
+body.theme-giangsinh .dropdown-menu .account-name,
+body.theme-giangsinh .dropdown-menu .account-role {
+    color: #fff !important;
+    text-shadow: 0 1px 4px #1b5e2088, 0 0px 1px #0008;
+}
 /* ══════════════════════════════════════════════════════
    GIÁNG SINH THEME — Tuyết rơi · Chữ xanh lá · Nền trắng
    Font: Nunito (rounded, festive, full Vietnamese support)
    ══════════════════════════════════════════════════════ */
-
-@import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600&display=swap');
 
 /* ── Background ── */
 body.theme-giangsinh {
@@ -39,6 +43,15 @@ body.theme-giangsinh nav {
     background: rgba(240, 255, 244, 0.97) !important;
     border-bottom: 2px solid #43a047 !important;
     box-shadow: 0 2px 12px rgba(27, 94, 32, 0.15) !important;
+}
+
+body.theme-giangsinh nav * {
+    color: #1b5e20 !important;
+    text-shadow: none !important;
+}
+body.theme-giangsinh .dropdown-menu, body.theme-giangsinh .dropdown-menu * {
+    color: #1b5e20 !important;
+    text-shadow: none !important;
 }
 
 /* ── Christmas green text ── */

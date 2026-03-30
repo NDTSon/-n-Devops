@@ -12,6 +12,8 @@ services:
     url: http://localhost:8083
   user-service:
     url: http://localhost:8081
+  interaction-service:
+    url: http://localhost:8086
 
 file:
   service:

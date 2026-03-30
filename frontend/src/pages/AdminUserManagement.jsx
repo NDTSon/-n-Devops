@@ -1,20 +1,30 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { userAPI, blogAPI } from '../services/api';
-import { Users, Shield, AlertCircle, CheckCircle, X, Search } from 'lucide-react';
+import { Users, Shield, AlertCircle, CheckCircle, X, Search, Lock } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import ConfirmModal from '../components/ConfirmModal';
+import { useAuth } from '../context/AuthContext';
 
 const AdminUserManagement = () => {
+    const { user: currentUser } = useAuth();
     const [users, setUsers] = useState([]);
     const [blogs, setBlogs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [updating, setUpdating] = useState(null);
+    const [passwordUpdating, setPasswordUpdating] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const [confirmModal, setConfirmModal] = useState({ open: false });
+    const [passwordModal, setPasswordModal] = useState({ open: false, userId: null, username: '' });
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const showToast = useToast();
+
+    const currentRole = currentUser?.role;
+    const isAdmin = currentRole === 'ADMIN';
+    const isSupport = currentRole === 'SUPPORT';
 
     useEffect(() => {
         fetchUsers();
@@ -74,10 +84,68 @@ const AdminUserManagement = () => {
         });
     };
 
+    const canSupportManage = (targetRole) => {
+        if (!isSupport) return false;
+        return targetRole === 'USER' || targetRole === 'EDITOR';
+    };
+
+    const canManageTargetUser = (targetRole) => {
+        if (isAdmin) return targetRole !== 'ADMIN';
+        if (isSupport) return canSupportManage(targetRole);
+        return false;
+    };
+
+    const getAssignableRolesForCurrentUser = () => {
+        if (isAdmin) {
+            return ['USER', 'EDITOR', 'SUPPORT'];
+        }
+        if (isSupport) {
+            return ['USER', 'EDITOR'];
+        }
+        return [];
+    };
+
+    const openPasswordModal = (userId, username) => {
+        setPasswordModal({ open: true, userId, username: username || '' });
+        setNewPassword('');
+        setConfirmPassword('');
+    };
+
+    const closePasswordModal = () => {
+        setPasswordModal({ open: false, userId: null, username: '' });
+        setNewPassword('');
+        setConfirmPassword('');
+    };
+
+    const handleUpdateUserPassword = async () => {
+        if (!passwordModal.userId) return;
+        if (newPassword.trim().length < 6) {
+            showToast('Mat khau moi phai tu 6 ky tu', 'error');
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            showToast('Xac nhan mat khau khong khop', 'error');
+            return;
+        }
+
+        setPasswordUpdating(true);
+        try {
+            await userAPI.updateUserPassword(passwordModal.userId, newPassword);
+            showToast(`Da doi mat khau cho ${passwordModal.username || 'nguoi dung'}`, 'success');
+            closePasswordModal();
+        } catch (err) {
+            showToast(err.response?.data?.error || 'Khong the doi mat khau', 'error');
+        } finally {
+            setPasswordUpdating(false);
+        }
+    };
+
     const getRoleBadgeColor = (role) => {
         switch (role) {
             case 'ADMIN':
                 return 'bg-red-100 text-red-700 border-red-300';
+            case 'SUPPORT':
+                return 'bg-purple-100 text-purple-700 border-purple-300';
             case 'EDITOR':
                 return 'bg-blue-100 text-blue-700 border-blue-300';
             case 'USER':
@@ -123,7 +191,7 @@ const AdminUserManagement = () => {
                 </div>
 
                 {/* Stats */}
-                <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="card bg-gradient-to-br from-primary-500 to-primary-600 text-white">
                         <h3 className="text-lg font-semibold mb-2">Total Users</h3>
                         <p className="text-4xl font-bold">{users.length}</p>
@@ -138,6 +206,12 @@ const AdminUserManagement = () => {
                         <h3 className="text-lg font-semibold mb-2">Regular Users</h3>
                         <p className="text-4xl font-bold">
                             {users.filter(u => u.role === 'USER').length}
+                        </p>
+                    </div>
+                    <div className="card bg-gradient-to-br from-purple-500 to-violet-600 text-white">
+                        <h3 className="text-lg font-semibold mb-2">Support Staff</h3>
+                        <p className="text-4xl font-bold">
+                            {users.filter(u => u.role === 'SUPPORT').length}
                         </p>
                     </div>
                 </div>
@@ -219,9 +293,8 @@ const AdminUserManagement = () => {
                                         <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">
                                             Posts
                                         </th>
-                                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">
-                                            Change Role
-                                        </th>
+                                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">Change Role</th>
+                                        <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">Password</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-200">
@@ -258,7 +331,7 @@ const AdminUserManagement = () => {
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4">
-                                                {user.role === 'ADMIN' ? (
+                                                {!canManageTargetUser(user.role) ? (
                                                     <span className="text-sm text-slate-400">Cannot modify</span>
                                                 ) : (
                                                     <select
@@ -267,14 +340,31 @@ const AdminUserManagement = () => {
                                                         disabled={updating === user.id}
                                                         className="input-field text-sm py-1 px-2"
                                                     >
-                                                        <option value="USER">User</option>
-                                                        <option value="EDITOR">Editor</option>
+                                                        {getAssignableRolesForCurrentUser().map((roleOption) => (
+                                                            <option key={roleOption} value={roleOption}>
+                                                                {roleOption.charAt(0) + roleOption.slice(1).toLowerCase()}
+                                                            </option>
+                                                        ))}
                                                     </select>
                                                 )}
                                                 {updating === user.id && (
                                                     <div className="inline-block ml-2">
                                                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
                                                     </div>
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                {!canManageTargetUser(user.role) ? (
+                                                    <span className="text-sm text-slate-400">Not allowed</span>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => openPasswordModal(user.id, user.username)}
+                                                        className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-slate-800 text-white rounded-lg hover:bg-slate-900"
+                                                    >
+                                                        <Lock className="w-3.5 h-3.5" />
+                                                        Đổi mật khẩu
+                                                    </button>
                                                 )}
                                             </td>
                                         </tr>
@@ -295,6 +385,70 @@ const AdminUserManagement = () => {
                 confirmText="Xác nhận"
                 variant={confirmModal.variant || 'warning'}
             />
+
+            {passwordModal.open && (
+                <div className="fixed inset-0 z-[1000] bg-black/50 flex items-center justify-center p-4">
+                    <div className="w-full max-w-md bg-white rounded-xl shadow-xl border border-slate-200">
+                        <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+                            <h3 className="text-lg font-semibold text-slate-800">Đổi mật khẩu người dùng</h3>
+                            <button
+                                type="button"
+                                onClick={closePasswordModal}
+                                className="p-1 rounded hover:bg-slate-100"
+                            >
+                                <X className="w-5 h-5 text-slate-500" />
+                            </button>
+                        </div>
+
+                        <div className="px-5 py-4 space-y-3">
+                            <p className="text-sm text-slate-600">
+                                Tài khoản: <span className="font-semibold text-slate-800">{passwordModal.username}</span>
+                            </p>
+
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Mật khẩu mới</label>
+                                <input
+                                    type="password"
+                                    value={newPassword}
+                                    onChange={(e) => setNewPassword(e.target.value)}
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                    placeholder="Nhap mat khau moi"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Xác nhận mật khẩu</label>
+                                <input
+                                    type="password"
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                    placeholder="Nhap lai mat khau moi"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="px-5 py-4 border-t border-slate-200 flex justify-end gap-2">
+                            <button
+                                type="button"
+                                onClick={closePasswordModal}
+                                className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50"
+                                disabled={passwordUpdating}
+                            >
+                                Hủy
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleUpdateUserPassword}
+                                disabled={passwordUpdating}
+                                className="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-60"
+                            >
+                                {passwordUpdating ? 'Đang cập nhật...' : 'Cập nhật mật khẩu'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

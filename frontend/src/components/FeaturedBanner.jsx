@@ -8,6 +8,34 @@ const FeaturedBanner = () => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [loading, setLoading] = useState(true);
     const [isPlaying, setIsPlaying] = useState(true);
+    const [brokenMediaUrls, setBrokenMediaUrls] = useState(new Set());
+
+    const getMediaUrl = (blog) => {
+        if (!blog) return '';
+        if (blog.imageFileId) return `/api/files/download/${blog.imageFileId}`;
+        return blog.imageUrl || '';
+    };
+
+    const markMediaBroken = (url) => {
+        if (!url) return;
+        setBrokenMediaUrls((prev) => {
+            if (prev.has(url)) return prev;
+            const next = new Set(prev);
+            next.add(url);
+            return next;
+        });
+    };
+
+    const shouldAutoPreviewMedia = (blog, url) => {
+        if (!url) return false;
+        if (!url.includes('/api/files/download/')) return true;
+
+        const mimeType = (blog.imageMimeType || '').toLowerCase();
+        if (mimeType.startsWith('image/') || mimeType.startsWith('video/')) return true;
+
+        const fileName = (blog.originalFileName || '').toLowerCase();
+        return /\.(jpg|jpeg|png|gif|webp|bmp|svg|mp4|webm|ogg|mov|avi|mkv)$/.test(fileName);
+    };
 
     useEffect(() => {
         fetchPinnedBlogs();
@@ -67,7 +95,7 @@ const FeaturedBanner = () => {
                    blog.imageMimeType.includes('powerpoint') ||
                    blog.imageMimeType.includes('presentation');
         }
-        const url = blog.imageUrl;
+        const url = getMediaUrl(blog);
         if (!url) return false;
         const lowerUrl = url.toLowerCase();
         return lowerUrl.endsWith('.pdf') || 
@@ -83,7 +111,7 @@ const FeaturedBanner = () => {
         if (blog.imageMimeType) {
             return blog.imageMimeType.startsWith('video/');
         }
-        const url = blog.imageUrl;
+        const url = getMediaUrl(blog);
         if (!url) return false;
         const lowerUrl = url.toLowerCase();
         return lowerUrl.endsWith('.mp4') || 
@@ -137,7 +165,7 @@ const FeaturedBanner = () => {
                 };
             }
         }
-        const url = blog.imageUrl;
+        const url = getMediaUrl(blog);
         const lowerUrl = url ? url.toLowerCase() : '';
         if (lowerUrl.endsWith('.pdf')) {
             return { 
@@ -183,7 +211,7 @@ const FeaturedBanner = () => {
         if (blog.originalFileName) {
             return blog.originalFileName;
         }
-        const url = blog.imageUrl;
+        const url = getMediaUrl(blog);
         if (url && url.includes('/api/files/download/')) {
             if (blog.imageMimeType) {
                 const mimeType = blog.imageMimeType.toLowerCase();
@@ -227,17 +255,21 @@ const FeaturedBanner = () => {
                         index === currentIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'
                     }`}
                 >
-                    {blog.imageUrl ? (
+                    {(() => {
+                        const mediaUrl = getMediaUrl(blog);
+                        const hasLoadableMedia = mediaUrl && !brokenMediaUrls.has(mediaUrl) && shouldAutoPreviewMedia(blog, mediaUrl);
+                        return hasLoadableMedia ? (
                         isVideoFile(blog) ? (
                             // Video background
                             <>
                                 <video
-                                    src={blog.imageUrl}
+                                    src={mediaUrl}
                                     autoPlay
                                     loop
                                     muted
                                     playsInline
                                     className="w-full h-full object-cover"
+                                    onError={() => markMediaBroken(mediaUrl)}
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-transparent"></div>
                             </>
@@ -279,16 +311,18 @@ const FeaturedBanner = () => {
                             // Regular image background
                             <>
                                 <img
-                                    src={blog.imageUrl}
+                                    src={mediaUrl}
                                     alt={blog.title}
                                     className="w-full h-full object-cover"
+                                    onError={() => markMediaBroken(mediaUrl)}
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/60 to-transparent"></div>
                             </>
                         )
                     ) : (
                         <div className="w-full h-full bg-gradient-to-br from-primary-600 via-primary-700 to-primary-800"></div>
-                    )}
+                    );
+                    })()}
                 </div>
             ))}
 

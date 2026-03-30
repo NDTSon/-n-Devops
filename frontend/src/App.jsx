@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import { ThemeProvider } from './context/ThemeContext';
 import SeasonDecorations from './components/SeasonDecorations';
+import SeasonAudioPlayer from './components/SeasonAudioPlayer';
 import './themes.css';
 import './themes/tet.css';
 import './themes/trungthu.css';
@@ -24,15 +25,22 @@ import FollowingFeedPage from './pages/FollowingFeedPage';
 import NotificationsPage from './pages/NotificationsPage';
 import UserProfilePage from './pages/UserProfilePage';
 import UsersPage from './pages/UsersPage';
+import SupportPage from './pages/SupportPage';
+import AdminSupportPage from './pages/AdminSupportPage';
 import ChatWidget from './components/ChatWidget';
+import SupportContactWidget from './components/SupportContactWidget';
 import { useAuth } from './context/AuthContext';
+import { useApiProgress } from './hooks/useApiProgress';
 
 function AppInner() {
     const { user } = useAuth();
+    // Attach global progress bar to every API call across all microservices
+    useApiProgress();
     return (
         <div className="min-h-screen flex flex-col">
             {/* Season & holiday decorations on corners */}
             <SeasonDecorations />
+            <SeasonAudioPlayer />
             <Navbar />
             <main className="flex-1">
                 <Routes>
@@ -76,6 +84,14 @@ function AppInner() {
                                 </ProtectedRoute>
                             }
                         />
+                        <Route
+                            path="/support"
+                            element={
+                                <ProtectedRoute>
+                                    <SupportPage />
+                                </ProtectedRoute>
+                            }
+                        />
 
                         {/* Admin Routes */}
                         <Route
@@ -105,7 +121,7 @@ function AppInner() {
                         <Route
                             path="/admin/users"
                             element={
-                                <ProtectedRoute adminOnly>
+                                <ProtectedRoute allowedRoles={['ADMIN', 'SUPPORT']}>
                                     <AdminUserManagement />
                                 </ProtectedRoute>
                             }
@@ -118,6 +134,14 @@ function AppInner() {
                                 </ProtectedRoute>
                             }
                         />
+                        <Route
+                            path="/admin/support"
+                            element={
+                                <ProtectedRoute adminOnly>
+                                    <AdminSupportPage />
+                                </ProtectedRoute>
+                            }
+                        />
 
                         {/* Profile & Discovery */}
                         <Route path="/profile/:userId" element={<UserProfilePage />} />
@@ -126,6 +150,7 @@ function AppInner() {
             </main>
             {/* Global Chat Widget (floating bottom-right) */}
             {user && <ChatWidget />}
+            {user && <SupportContactWidget />}
         </div>
     );
 }

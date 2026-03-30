@@ -12,6 +12,7 @@ import ConfirmModal from '../components/ConfirmModal';
 const BlogDetailPage = () => {
     const { id } = useParams();
     const [blog, setBlog] = useState(null);
+    const [mediaPreviewFailed, setMediaPreviewFailed] = useState(false);
     const [loading, setLoading] = useState(true);
     const [deleting, setDeleting] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -20,22 +21,43 @@ const BlogDetailPage = () => {
     const navigate = useNavigate();
     const showToast = useToast();
 
+    const getMediaUrl = (blogData) => {
+        if (!blogData) return '';
+        if (blogData.imageFileId) return `/api/files/download/${blogData.imageFileId}`;
+        return blogData.imageUrl || '';
+    };
+
+    const openMediaInNewTab = (url) => {
+        if (!url) {
+            showToast('Không tìm thấy đường dẫn file', 'error');
+            return;
+        }
+        window.open(url, '_blank', 'noopener,noreferrer');
+    };
+
     const isImageFile = (blog) => {
         // Check by mimeType if available
         if (blog.imageMimeType) {
             return blog.imageMimeType.startsWith('image/');
         }
-        // Fallback to checking URL extension
-        const url = blog.imageUrl;
-        if (!url) return false;
-        const lowerUrl = url.toLowerCase();
+        // Fallback to checking file name/URL extension
+        const lowerName = (blog.originalFileName || '').toLowerCase();
+        const url = getMediaUrl(blog);
+        const lowerUrl = (url || '').toLowerCase();
         return lowerUrl.endsWith('.jpg') || 
                lowerUrl.endsWith('.jpeg') || 
                lowerUrl.endsWith('.png') ||
                lowerUrl.endsWith('.gif') ||
                lowerUrl.endsWith('.webp') ||
                lowerUrl.endsWith('.svg') ||
-               lowerUrl.endsWith('.bmp');
+               lowerUrl.endsWith('.bmp') ||
+               lowerName.endsWith('.jpg') ||
+               lowerName.endsWith('.jpeg') ||
+               lowerName.endsWith('.png') ||
+               lowerName.endsWith('.gif') ||
+               lowerName.endsWith('.webp') ||
+               lowerName.endsWith('.svg') ||
+               lowerName.endsWith('.bmp');
     };
 
     const isVideoFile = (blog) => {
@@ -43,15 +65,21 @@ const BlogDetailPage = () => {
         if (blog.imageMimeType) {
             return blog.imageMimeType.startsWith('video/');
         }
-        // Fallback to checking URL extension
-        const url = blog.imageUrl;
-        if (!url) return false;
-        const lowerUrl = url.toLowerCase();
+         // Fallback to checking file name/URL extension
+         const lowerName = (blog.originalFileName || '').toLowerCase();
+         const url = getMediaUrl(blog);
+         const lowerUrl = (url || '').toLowerCase();
         return lowerUrl.endsWith('.mp4') || 
                lowerUrl.endsWith('.webm') || 
                lowerUrl.endsWith('.ogg') ||
                lowerUrl.endsWith('.mov') ||
-               lowerUrl.endsWith('.avi');
+             lowerUrl.endsWith('.avi') ||
+             lowerName.endsWith('.mp4') ||
+             lowerName.endsWith('.webm') ||
+             lowerName.endsWith('.ogg') ||
+             lowerName.endsWith('.mov') ||
+             lowerName.endsWith('.avi') ||
+             lowerName.endsWith('.mkv');
     };
 
     const isDocumentFile = (blog) => {
@@ -66,7 +94,7 @@ const BlogDetailPage = () => {
                    blog.imageMimeType.includes('presentation');
         }
         // Fallback to checking URL extension
-        const url = blog.imageUrl;
+        const url = getMediaUrl(blog);
         if (!url) return false;
         const lowerUrl = url.toLowerCase();
         return lowerUrl.endsWith('.pdf') || 
@@ -122,7 +150,7 @@ const BlogDetailPage = () => {
                 };
             }
         }
-        const url = blog.imageUrl;
+        const url = getMediaUrl(blog);
         const lowerUrl = url ? url.toLowerCase() : '';
         if (lowerUrl.endsWith('.pdf')) {
             return { 
@@ -168,7 +196,7 @@ const BlogDetailPage = () => {
         if (blog.originalFileName) {
             return blog.originalFileName;
         }
-        const url = blog.imageUrl;
+        const url = getMediaUrl(blog);
         if (url && url.includes('/api/files/download/')) {
             if (blog.imageMimeType) {
                 const mimeType = blog.imageMimeType.toLowerCase();
@@ -193,6 +221,10 @@ const BlogDetailPage = () => {
     useEffect(() => {
         fetchBlog();
     }, [id]);
+
+    useEffect(() => {
+        setMediaPreviewFailed(false);
+    }, [blog?.id, blog?.imageFileId, blog?.imageUrl]);
 
     const fetchBlog = async () => {
         try {
@@ -228,8 +260,32 @@ const BlogDetailPage = () => {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary-600"></div>
+            <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+                <div className="max-w-4xl mx-auto">
+                    {/* Back link skeleton */}
+                    <div className="skeleton h-5 w-36 mb-8" />
+                    <div className="bg-white rounded-xl shadow-md p-6">
+                        {/* Banner skeleton */}
+                        <div className="skeleton h-64 w-full rounded-xl mb-8" />
+                        {/* Category */}
+                        <div className="skeleton h-3 w-24 mb-3" />
+                        {/* Title */}
+                        <div className="skeleton h-10 w-3/4 mb-2" />
+                        <div className="skeleton h-10 w-1/2 mb-4" />
+                        {/* Description */}
+                        <div className="skeleton h-5 w-full mb-2" />
+                        <div className="skeleton h-5 w-4/5 mb-6" />
+                        {/* Meta row */}
+                        <div className="flex gap-4 pb-6 border-b border-slate-200 mb-6">
+                            <div className="skeleton h-4 w-32" />
+                            <div className="skeleton h-4 w-32" />
+                        </div>
+                        {/* Content lines */}
+                        {Array.from({ length: 8 }).map((_, i) => (
+                            <div key={i} className={`skeleton h-4 mb-3 ${i % 4 === 3 ? 'w-3/5' : 'w-full'}`} />
+                        ))}
+                    </div>
+                </div>
             </div>
         );
     }
@@ -247,6 +303,8 @@ const BlogDetailPage = () => {
         );
     }
 
+    const mediaUrl = getMediaUrl(blog);
+
     return (
         <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
             <div className="max-w-4xl mx-auto">
@@ -262,25 +320,32 @@ const BlogDetailPage = () => {
                 {/* Blog Content */}
                 <article className="card">
                     {/* Banner Image or File Attachment */}
-                    {blog.imageUrl && (
+                    {mediaUrl && (
                         <div className="mb-8">
-                            {isVideoFile(blog) ? (
+                            {!mediaPreviewFailed && isVideoFile(blog) ? (
                                 // Video file - Display video player
                                 <div className="rounded-xl overflow-hidden shadow-md">
                                     <video
-                                        src={blog.imageUrl}
+                                        src={mediaUrl}
                                         controls
                                         className="w-full max-h-[600px]"
-                                        onError={(e) => {
-                                            // If video fails to load, hide it
-                                            e.target.style.display = 'none';
-                                        }}
+                                        onError={() => setMediaPreviewFailed(true)}
                                     >
                                         Your browser does not support the video tag.
                                     </video>
                                 </div>
-                            ) : isDocumentFile(blog) ? (
-                                // Document files (PDF, DOCX, XLSX) - Enhanced card
+                            ) : !mediaPreviewFailed && isImageFile(blog) ? (
+                                // Image file - Display directly
+                                <div className="rounded-xl overflow-hidden shadow-md">
+                                    <img
+                                        src={mediaUrl}
+                                        alt={blog.title}
+                                        className="w-full max-h-[600px] object-cover"
+                                        onError={() => setMediaPreviewFailed(true)}
+                                    />
+                                </div>
+                            ) : (
+                                // Non-image/video files or failed preview - show download/view card
                                 (() => {
                                     const fileInfo = getFileIcon(blog);
                                     const IconComponent = fileInfo.icon;
@@ -313,34 +378,20 @@ const BlogDetailPage = () => {
                                                         </p>
                                                         
                                                         {/* Download/View button */}
-                                                        <a
-                                                            href={blog.imageUrl}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => openMediaInNewTab(mediaUrl)}
                                                             className={`inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r ${fileInfo.gradient} text-white rounded-lg hover:shadow-lg transition-all duration-200 font-medium`}
                                                         >
                                                             <Download className="w-5 h-5" />
                                                             Tải xuống / Xem file
-                                                        </a>
+                                                        </button>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
                                     );
                                 })()
-                            ) : (
-                                // Image file - Display directly
-                                <div className="rounded-xl overflow-hidden shadow-md">
-                                    <img
-                                        src={blog.imageUrl}
-                                        alt={blog.title}
-                                        className="w-full max-h-[600px] object-cover"
-                                        onError={(e) => {
-                                            // If image fails to load, hide it
-                                            e.target.style.display = 'none';
-                                        }}
-                                    />
-                                </div>
                             )}
                         </div>
                     )}

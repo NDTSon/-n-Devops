@@ -48,7 +48,7 @@ export function ToastProvider({ children }) {
                 {toasts.map(toast => (
                     <div
                         key={toast.id}
-                        className={`flex items-start gap-3 p-4 rounded-xl border shadow-lg backdrop-blur-sm pointer-events-auto animate-fadeIn ${STYLES[toast.type] || STYLES.info}`}
+                        className={`flex items-start gap-3 p-4 rounded-xl border shadow-lg backdrop-blur-sm pointer-events-auto animate-slideInRight ${STYLES[toast.type] || STYLES.info}`}
                     >
                         {ICONS[toast.type] || ICONS.info}
                         <p className={`flex-1 text-sm font-medium leading-snug ${TEXT_STYLES[toast.type] || TEXT_STYLES.info}`}>

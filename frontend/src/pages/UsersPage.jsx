@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { userAPI } from '../services/api';
 import FollowButton from '../components/FollowButton';
 import { Search, Users, ShieldCheck, Edit3, User } from 'lucide-react';
+import Spinner from '../components/Spinner';
 
 const ROLE_COLORS = {
     ADMIN: 'bg-red-100 text-red-700 border-red-200',
@@ -75,7 +76,7 @@ const UsersPage = () => {
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
-                <div className="animate-spin rounded-full h-14 w-14 border-b-2 border-primary-600" />
+                <Spinner variant="bars" size="lg" label="Đang tải thành viên..." />
             </div>
         );
     }

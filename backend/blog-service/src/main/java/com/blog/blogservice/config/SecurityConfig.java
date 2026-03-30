@@ -33,7 +33,7 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.GET, "/api/categories", "/api/categories/**").permitAll()
                                                 // Public read access to comments
                                                 .requestMatchers(HttpMethod.GET, "/api/comments/**").permitAll()
-                                                .requestMatchers("/uploads/**").permitAll()
+                                                .requestMatchers("/api/uploads/**", "/uploads/**").permitAll()
                                                 .requestMatchers("/actuator/**").permitAll()
                                                 .requestMatchers("/error").permitAll()
                                                 // Internal service-to-service calls
@@ -49,6 +49,6 @@ public class SecurityConfig {
 
         @Bean
         public org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer webSecurityCustomizer() {
-                return (web) -> web.ignoring().requestMatchers("/uploads/**");
+                return (web) -> web.ignoring().requestMatchers("/api/uploads/**", "/uploads/**");
         }
 }

@@ -59,6 +59,7 @@ services:
       JWT_SECRET: 5367566B59703373367639792F423F4528482B4D6251655468576D5A71347437
       JWT_EXPIRATION: 86400000
       APP_BASE_URL: http://localhost:5173
+      INTERACTION_SERVICE_URL: http://interaction-service:8086
     ports:
       - "9001:8081"
     depends_on:
@@ -83,6 +84,8 @@ services:
       SPRING_DATASOURCE_PASSWORD: postgres
       JWT_SECRET: 5367566B59703373367639792F423F4528482B4D6251655468576D5A71347437
       FILE_SERVICE_URL: http://file-service:8083
+      USER_SERVICE_URL: http://user-service:8081
+      INTERACTION_SERVICE_URL: http://interaction-service:8086
     ports:
       - "8083:8082"
     depends_on:
@@ -198,6 +201,106 @@ services:
       - user-service
       - blog-service
       - file-service
+      - interaction-service
+      - customer-service
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+  # Interaction DB
+  interaction-db:
+    image: postgres:16
+    container_name: interaction-db
+    environment:
+      POSTGRES_DB: interaction_service_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      TZ: Asia/Ho_Chi_Minh
+    ports:
+      - "5436:5432"
+    volumes:
+      - interaction-db-data:/var/lib/postgresql/data
+    networks:
+      - blog-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Interaction Service: Comments, Notifications, Messages
+  interaction-service:
+    build:
+      context: ./backend/interaction-service
+      dockerfile: Dockerfile
+    container_name: interaction-service
+    environment:
+      SERVER_PORT: 8086
+      SPRING_DATASOURCE_URL: jdbc:postgresql://interaction-db:5432/interaction_service_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      JWT_SECRET: 5367566B59703373367639792F423F4528482B4D6251655468576D5A71347437
+      JWT_EXPIRATION: 86400000
+      USER_SERVICE_URL: http://user-service:8081
+      BLOG_SERVICE_URL: http://blog-service:8082
+    ports:
+      - "8086:8086"
+    depends_on:
+      interaction-db:
+        condition: service_healthy
+      user-service:
+        condition: service_started
+    networks:
+      - blog-network
+    restart: unless-stopped
+
+  # Customer DB
+  customer-db:
+    image: postgres:16
+    container_name: customer-db
+    environment:
+      POSTGRES_DB: customer_service_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      TZ: Asia/Ho_Chi_Minh
+    ports:
+      - "5437:5432"
+    volumes:
+      - customer-db-data:/var/lib/postgresql/data
+    networks:
+      - blog-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Customer Service: Support tickets and AI assistant
+  customer-service:
+    build:
+      context: ./backend/customer-service
+      dockerfile: Dockerfile
+    container_name: customer-service
+    environment:
+      SERVER_PORT: 8087
+      SPRING_DATASOURCE_URL: jdbc:postgresql://customer-db:5432/customer_service_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      JWT_SECRET: 5367566B59703373367639792F423F4528482B4D6251655468576D5A71347437
+      JWT_EXPIRATION: 86400000
+      AI_BASE_URL: ${AI_BASE_URL:-https://generativelanguage.googleapis.com/v1beta/openai}
+      AI_MODEL: "${AI_MODEL:-}"
+      AI_API_KEY: ${AI_API_KEY:-AIzaSyDd5vZOSSv4Yn5KVaYZLLi1YcplxIPXt1Q}
+      AI_CHAT_PATH: ${AI_CHAT_PATH:-/chat/completions}
+    ports:
+      - "8087:8087"
+    depends_on:
+      customer-db:
+        condition: service_healthy
+      user-service:
+        condition: service_started
     networks:
       - blog-network
     restart: unless-stopped
@@ -212,3 +315,5 @@ volumes:
   file-db-data:
   seaweedfs-master-data:
   seaweedfs-volume-data:
+  interaction-db-data:
+  customer-db-data:

@@ -27,60 +27,108 @@
 }
 @layer utilities {
   .animate-fadeIn {
-    animation: fadeIn 0.6s ease-out;
+    animation: fadeIn 0.5s ease-out both;
   }
   
   .animate-scaleIn {
-    animation: scaleIn 0.2s ease-out;
+    animation: scaleIn 0.2s ease-out both;
   }
 
   .animate-fadeInScale {
-    animation: fadeInScale 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: fadeInScale 0.8s cubic-bezier(0.4, 0, 0.2, 1) both;
   }
 
   .animate-fadeInUp {
-    animation: fadeInUp 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
   }
+
+  /* Toast slide-in từ phải */
+  .animate-slideInRight {
+    animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* Skeleton shimmer */
+  .skeleton {
+    @apply bg-slate-200 rounded overflow-hidden relative;
+  }
+  .skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.6) 50%, transparent 100%);
+    animation: shimmer 1.4s infinite;
+  }
+
+  /* Stagger helpers cho blog cards */
+  .stagger-1 { animation-delay: 0.05s; }
+  .stagger-2 { animation-delay: 0.10s; }
+  .stagger-3 { animation-delay: 0.15s; }
+  .stagger-4 { animation-delay: 0.20s; }
+  .stagger-5 { animation-delay: 0.25s; }
+  .stagger-6 { animation-delay: 0.30s; }
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 @keyframes scaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
 }
 
 @keyframes fadeInScale {
-  0% {
-    opacity: 0;
-    transform: scale(1.05);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
+  0%   { opacity: 0; transform: scale(1.05); }
+  100% { opacity: 1; transform: scale(1); }
 }
 
 @keyframes fadeInUp {
-  0% {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  0%   { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
 }
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(40px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* ── Spinner keyframes ─────────────────────────────────────────────────────── */
+
+@keyframes dotBounce {
+  0%, 80%, 100% { transform: translateY(0);    opacity: 1; }
+  40%           { transform: translateY(-10px); opacity: 0.7; }
+}
+
+@keyframes barPulse {
+  from { transform: scaleY(0.35); opacity: 0.6; }
+  to   { transform: scaleY(1);    opacity: 1;   }
+}
+
+@keyframes ripple {
+  0%   { transform: scale(0.6); opacity: 0.8; }
+  100% { transform: scale(2);   opacity: 0;   }
+}
+
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1);    }
+  14%      { transform: scale(1.15); }
+  28%      { transform: scale(1);    }
+  42%      { transform: scale(1.1);  }
+  70%      { transform: scale(1);    }
+}
+
+@keyframes orbit {
+  from { transform: rotate(0deg)   translateX(100%) rotate(0deg); }
+  to   { transform: rotate(360deg) translateX(100%) rotate(-360deg); }
+}
+
+@keyframes glowPulse {
+  0%, 100% { transform: scale(1);    opacity: 0.3; }
+  50%      { transform: scale(1.4);  opacity: 0.15; }
+}

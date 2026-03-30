@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { Bell, MessageCircle, FileText, UserPlus, Mail, Check, CheckCheck, Trash2, ArrowLeft } from 'lucide-react';
 import ConfirmModal from '../components/ConfirmModal';
+import Spinner from '../components/Spinner';
 
 const NotificationsPage = () => {
     const [notifications, setNotifications] = useState([]);
@@ -141,7 +142,7 @@ const NotificationsPage = () => {
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
-                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary-600"></div>
+                <Spinner variant="dots" size="lg" label="Đang tải thông báo..." />
             </div>
         );
     }

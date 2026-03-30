@@ -11,7 +11,36 @@ const BlogListPage = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
     const [showDropdown, setShowDropdown] = useState(false);
+    const [brokenMediaUrls, setBrokenMediaUrls] = useState(new Set());
     const dropdownRef = useRef(null);
+
+    const getMediaUrl = (blog) => {
+        if (!blog) return '';
+        if (blog.imageFileId) return `/api/files/download/${blog.imageFileId}`;
+        return blog.imageUrl || '';
+    };
+
+    const markMediaBroken = (url) => {
+        if (!url) return;
+        setBrokenMediaUrls((prev) => {
+            if (prev.has(url)) return prev;
+            const next = new Set(prev);
+            next.add(url);
+            return next;
+        });
+    };
+
+    const shouldAutoPreviewMedia = (blog, url) => {
+        if (!url) return false;
+        if (!url.includes('/api/files/download/')) return true;
+
+        // Keep inline preview for image/video attachments served by file-service.
+        const mimeType = (blog.imageMimeType || '').toLowerCase();
+        if (mimeType.startsWith('image/') || mimeType.startsWith('video/')) return true;
+
+        const fileName = (blog.originalFileName || '').toLowerCase();
+        return /\.(jpg|jpeg|png|gif|webp|bmp|svg|mp4|webm|ogg|mov|avi|mkv)$/.test(fileName);
+    };
 
     useEffect(() => {
         fetchBlogs();
@@ -73,7 +102,7 @@ const BlogListPage = () => {
             return blog.imageMimeType.startsWith('video/');
         }
         // Fallback to checking URL extension
-        const url = blog.imageUrl;
+        const url = getMediaUrl(blog);
         if (!url) return false;
         const lowerUrl = url.toLowerCase();
         return lowerUrl.endsWith('.mp4') || 
@@ -95,7 +124,7 @@ const BlogListPage = () => {
                    blog.imageMimeType.includes('presentation');
         }
         // Fallback to checking URL extension
-        const url = blog.imageUrl;
+        const url = getMediaUrl(blog);
         if (!url) return false;
         const lowerUrl = url.toLowerCase();
         return lowerUrl.endsWith('.pdf') || 
@@ -154,7 +183,7 @@ const BlogListPage = () => {
             }
         }
         // Fallback to URL extension check
-        const url = blog.imageUrl;
+        const url = getMediaUrl(blog);
         if (!url) return { 
             icon: File, 
             color: 'text-slate-600', 
@@ -212,7 +241,7 @@ const BlogListPage = () => {
         }
         
         // If URL is from file service API (/api/files/download/{id}), generate name based on mimeType
-        const url = blog.imageUrl;
+        const url = getMediaUrl(blog);
         if (url && url.includes('/api/files/download/')) {
             if (blog.imageMimeType) {
                 const mimeType = blog.imageMimeType.toLowerCase();
@@ -249,10 +278,34 @@ const BlogListPage = () => {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary-600 mx-auto mb-4"></div>
-                    <p className="text-slate-600 font-medium">Loading blogs...</p>
+            <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+                <div className="max-w-7xl mx-auto">
+                    {/* Skeleton FeaturedBanner */}
+                    <div className="skeleton h-64 w-full mb-10 rounded-2xl" />
+
+                    {/* Skeleton header */}
+                    <div className="mb-8">
+                        <div className="skeleton h-8 w-48 mb-2" />
+                        <div className="skeleton h-4 w-72" />
+                    </div>
+
+                    {/* Skeleton grid — 6 cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {Array.from({ length: 6 }).map((_, i) => (
+                            <div key={i} className="bg-white rounded-xl shadow-md p-6 flex flex-col gap-3">
+                                <div className="skeleton h-48 w-full rounded-lg mb-2" />
+                                <div className="skeleton h-3 w-20" />
+                                <div className="skeleton h-6 w-full" />
+                                <div className="skeleton h-4 w-full" />
+                                <div className="skeleton h-4 w-4/5" />
+                                <div className="flex justify-between mt-2">
+                                    <div className="skeleton h-3 w-24" />
+                                    <div className="skeleton h-3 w-24" />
+                                </div>
+                                <div className="skeleton h-4 w-24 mt-1" />
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
         );
@@ -431,22 +484,28 @@ const BlogListPage = () => {
                         {filteredBlogs.map((blog, index) => (
                             <article
                                 key={blog.id}
-                                className="card group hover:scale-105 transition-transform duration-300 flex flex-col h-full"
-                                style={{ animationDelay: `${index * 0.05}s` }}
+                                className="card group hover:scale-105 transition-transform duration-300 flex flex-col h-full animate-fadeInUp"
+                                style={{ animationDelay: `${Math.min(index, 5) * 0.07}s` }}
                             >
                                 {/* Image/File section - Always render with fixed height */}
                                 <div className="mb-4 h-48 overflow-hidden rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
-                                    {blog.imageUrl ? (
+                                    {(() => {
+                                        const mediaUrl = getMediaUrl(blog);
+                                        const hasLoadableMedia = mediaUrl && !brokenMediaUrls.has(mediaUrl) && shouldAutoPreviewMedia(blog, mediaUrl);
+                                        const fileInfo = getFileIcon(blog);
+                                        const IconComponent = fileInfo.icon;
+                                        return hasLoadableMedia ? (
                                         isVideoFile(blog) ? (
                                             // Video file - Display video player
                                             <video
-                                                src={blog.imageUrl}
+                                                src={mediaUrl}
                                                 className="w-full h-full object-cover"
                                                 muted
                                                 loop
                                                 playsInline
                                                 onMouseEnter={(e) => e.target.play()}
                                                 onMouseLeave={(e) => e.target.pause()}
+                                                onError={() => markMediaBroken(mediaUrl)}
                                             />
                                         ) : isDocumentFile(blog) ? (
                                             // Document files (PDF, DOCX, XLSX) - Enhanced Design
@@ -493,10 +552,11 @@ const BlogListPage = () => {
                                             // Try to load as image, fallback to file icon if error
                                             <div className="relative w-full h-full">
                                                 <img
-                                                    src={blog.imageUrl}
+                                                    src={mediaUrl}
                                                     alt={blog.title}
                                                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                                                     onError={(e) => {
+                                                        markMediaBroken(mediaUrl);
                                                         // If image fails to load, show file icon
                                                         const parent = e.target.parentElement;
                                                         e.target.style.display = 'none';
@@ -519,6 +579,30 @@ const BlogListPage = () => {
                                                 />
                                             </div>
                                         )
+                                    ) : mediaUrl ? (
+                                        <div className="w-full h-full bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4 relative overflow-hidden">
+                                            <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${fileInfo.gradient} opacity-5 rounded-full -translate-y-1/2 translate-x-1/2`}></div>
+                                            <div className={`absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr ${fileInfo.gradient} opacity-5 rounded-full translate-y-1/2 -translate-x-1/2`}></div>
+                                            <div className={`relative bg-white rounded-xl border-2 ${fileInfo.borderColor} p-5 shadow-sm w-full`}>
+                                                <div className="flex justify-center mb-3">
+                                                    <div className={`relative inline-flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-br ${fileInfo.gradient} shadow-md`}>
+                                                        <IconComponent className="w-8 h-8 text-white" strokeWidth={2} />
+                                                    </div>
+                                                </div>
+                                                <div className="flex justify-center mb-3">
+                                                    <div className={`inline-flex items-center px-3 py-1 rounded-full ${fileInfo.badgeBg} border ${fileInfo.borderColor}`}>
+                                                        <span className={`text-xs font-bold ${fileInfo.color} uppercase tracking-wider`}>{fileInfo.name}</span>
+                                                    </div>
+                                                </div>
+                                                <p className="text-sm font-semibold text-slate-800 text-center line-clamp-2 px-2 mb-3">
+                                                    {extractFileName(blog)}
+                                                </p>
+                                                <div className="flex items-center justify-center gap-2 text-xs text-slate-500">
+                                                    <ExternalLink className="w-3 h-3" />
+                                                    <span>Mở trong chi tiết</span>
+                                                </div>
+                                            </div>
+                                        </div>
                                     ) : (
                                         // No image/file - Show gradient placeholder
                                         <div className="w-full h-full bg-gradient-to-br from-primary-100 via-primary-50 to-slate-100 flex items-center justify-center relative overflow-hidden">
@@ -529,7 +613,8 @@ const BlogListPage = () => {
                                             {/* Icon */}
                                             <BookOpen className="w-16 h-16 text-primary-300" strokeWidth={1.5} />
                                         </div>
-                                    )}
+                                    );
+                                    })()}
                                 </div>
 
                                 {/* Content section */}

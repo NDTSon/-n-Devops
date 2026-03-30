@@ -1,0 +1,14 @@
+server:
+  port: 8086
+
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5436/interaction_service_db}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+
+services:
+  user-service:
+    url: ${USER_SERVICE_URL:http://localhost:8081}
+  blog-service:
+    url: ${BLOG_SERVICE_URL:http://localhost:8082}

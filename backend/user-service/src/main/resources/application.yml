@@ -45,6 +45,10 @@ jwt:
 app:
   base-url: ${APP_BASE_URL:http://localhost:5173}
 
+services:
+  interaction-service:
+    url: ${INTERACTION_SERVICE_URL:http://interaction-service:8086}
+
 management:
   endpoints:
     web:

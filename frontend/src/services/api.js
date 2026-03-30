@@ -8,11 +8,53 @@ import axios from 'axios';
 const USER_SERVICE_URL  = import.meta.env.VITE_API_USER_SERVICE || '/api';
 const BLOG_SERVICE_URL  = import.meta.env.VITE_API_BLOG_SERVICE || '/api';
 const FILE_SERVICE_URL  = import.meta.env.VITE_API_FILE_SERVICE || '/api';
+const INTERACTION_SERVICE_URL = import.meta.env.VITE_API_INTERACTION_SERVICE || '/api';
+const CUSTOMER_SERVICE_URL = import.meta.env.VITE_API_CUSTOMER_SERVICE || '/api';
+
+function getTokenFromObject(obj) {
+    if (!obj || typeof obj !== 'object') return '';
+
+    const directToken = obj.token || obj.accessToken || obj.authToken || obj.jwt || obj.jwtToken;
+    if (typeof directToken === 'string' && directToken.trim()) {
+        return directToken;
+    }
+
+    const nestedToken = obj.auth?.token || obj.auth?.accessToken;
+    if (typeof nestedToken === 'string' && nestedToken.trim()) {
+        return nestedToken;
+    }
+
+    return '';
+}
+
+function getStoredToken() {
+    const localToken = localStorage.getItem('token');
+    const accessToken = localStorage.getItem('accessToken');
+    const authToken = localStorage.getItem('authToken');
+    const jwtToken = localStorage.getItem('jwt');
+    const sessionToken = sessionStorage.getItem('token');
+    const userRaw = localStorage.getItem('user');
+
+    let token = localToken || accessToken || authToken || jwtToken || sessionToken;
+    if (!token && userRaw) {
+        try {
+            const parsedUser = JSON.parse(userRaw);
+            token = getTokenFromObject(parsedUser);
+        } catch {
+            token = '';
+        }
+    }
+
+    if (!token) return '';
+    return token.replace(/^Bearer\s+/i, '').trim();
+}
 
 if (import.meta.env.DEV) {
     console.log('[API] user-service :', USER_SERVICE_URL);
     console.log('[API] blog-service :', BLOG_SERVICE_URL);
     console.log('[API] file-service :', FILE_SERVICE_URL);
+    console.log('[API] interaction-service :', INTERACTION_SERVICE_URL);
+    console.log('[API] customer-service :', CUSTOMER_SERVICE_URL);
 }
 
 // =============================================
@@ -21,7 +63,7 @@ if (import.meta.env.DEV) {
 function addInterceptors(instance) {
     instance.interceptors.request.use(
         (config) => {
-            const token = localStorage.getItem('token');
+            const token = getStoredToken();
             if (token) config.headers.Authorization = `Bearer ${token}`;
             return config;
         },
@@ -42,8 +84,9 @@ function addInterceptors(instance) {
                 const isAuthEndpoint = error.config?.url?.includes('/auth/login') ||
                                        error.config?.url?.includes('/auth/register');
                 const isCategoryEndpoint = error.config?.url?.includes('/categories');
+                const isSupportAiEndpoint = error.config?.url?.includes('/support/ai/assist');
 
-                if (!isAuthEndpoint && !isCategoryEndpoint) {
+                if (!isAuthEndpoint && !isCategoryEndpoint && !isSupportAiEndpoint) {
                     const errorMsg = error.response?.data?.message || 'Phiên đăng nhập hết hạn';
                     console.error('Auto-redirecting to login:', errorMsg);
                     setTimeout(() => {
@@ -78,6 +121,16 @@ const fileApi = addInterceptors(axios.create({
     headers: { 'Content-Type': 'application/json' },
 }));
 
+const interactionApi = addInterceptors(axios.create({
+    baseURL: INTERACTION_SERVICE_URL,
+    headers: { 'Content-Type': 'application/json' },
+}));
+
+const customerApi = addInterceptors(axios.create({
+    baseURL: CUSTOMER_SERVICE_URL,
+    headers: { 'Content-Type': 'application/json' },
+}));
+
 // =============================================
 // User Service API  →  /api/auth, /api/users, /api/follow, /api/notifications, /api/messages
 // =============================================
@@ -86,6 +139,7 @@ export const userAPI = {
     getUserById: (id) => userApi.get(`/users/${id}`),
     getMyProfile: () => userApi.get('/users/me'),
     changePassword: (data) => userApi.post('/users/change-password', data),
+    updateUserPassword: (id, newPassword) => userApi.put(`/users/${id}/password`, { newPassword }),
     updateRole: (id, role) => userApi.put(`/users/${id}/role`, { role }),
     updateShowEmail: (showEmail) => userApi.put('/users/me/show-email', { showEmail })
 };
@@ -107,21 +161,21 @@ export const followAPI = {
 };
 
 export const notificationAPI = {
-    getAllNotifications: () => userApi.get('/notifications'),
-    getUnreadNotifications: () => userApi.get('/notifications/unread'),
-    getUnreadCount: () => userApi.get('/notifications/unread/count'),
-    markAsRead: (id) => userApi.put(`/notifications/${id}/read`),
-    markAllAsRead: () => userApi.put('/notifications/read-all'),
-    deleteReadNotifications: () => userApi.delete('/notifications/read')
+    getAllNotifications: () => interactionApi.get('/notifications'),
+    getUnreadNotifications: () => interactionApi.get('/notifications/unread'),
+    getUnreadCount: () => interactionApi.get('/notifications/unread/count'),
+    markAsRead: (id) => interactionApi.put(`/notifications/${id}/read`),
+    markAllAsRead: () => interactionApi.put('/notifications/read-all'),
+    deleteReadNotifications: () => interactionApi.delete('/notifications/read')
 };
 
 export const messageAPI = {
-    sendMessage: (receiverId, content) => userApi.post(`/messages/${receiverId}`, { content }),
-    getMessages: (userId) => userApi.get(`/messages/${userId}`),
-    getConversations: () => userApi.get('/messages/conversations'),
-    markAsRead: (messageId) => userApi.put(`/messages/${messageId}/read`),
-    markAllAsReadFromSender: (senderId) => userApi.put(`/messages/read-all/${senderId}`),
-    getUnreadCount: () => userApi.get('/messages/unread/count')
+    sendMessage: (receiverId, content) => interactionApi.post(`/messages/${receiverId}`, { content }),
+    getMessages: (userId) => interactionApi.get(`/messages/${userId}`),
+    getConversations: () => interactionApi.get('/messages/conversations'),
+    markAsRead: (messageId) => interactionApi.put(`/messages/${messageId}/read`),
+    markAllAsReadFromSender: (senderId) => interactionApi.put(`/messages/read-all/${senderId}`),
+    getUnreadCount: () => interactionApi.get('/messages/unread/count')
 };
 
 // =============================================
@@ -155,10 +209,10 @@ export const blogAPI = {
 };
 
 export const commentAPI = {
-    getByBlog: (blogId) => blogApi.get(`/comments/blog/${blogId}`),
-    create: (data) => blogApi.post('/comments', data),
-    update: (id, data) => blogApi.put(`/comments/${id}`, data),
-    delete: (id) => blogApi.delete(`/comments/${id}`),
+    getByBlog: (blogId) => interactionApi.get(`/comments/blog/${blogId}`),
+    create: (data) => interactionApi.post('/comments', data),
+    update: (id, data) => interactionApi.put(`/comments/${id}`, data),
+    delete: (id) => interactionApi.delete(`/comments/${id}`),
 };
 
 // =============================================
@@ -170,6 +224,21 @@ export const fileAPI = {
     }),
     delete: (fileId) => fileApi.delete(`/files/${fileId}`),
     getUrl: (fileId) => fileApi.get(`/files/${fileId}`),
+};
+
+export const supportAPI = {
+    createTicket: (data) => customerApi.post('/support/tickets', data),
+    getMyTickets: () => customerApi.get('/support/tickets/my'),
+    getAllTickets: (params) => customerApi.get('/support/tickets', { params }),
+    getTicketDetail: (ticketId) => customerApi.get(`/support/tickets/${ticketId}`),
+    updateTicketStatus: (ticketId, status) => customerApi.put(`/support/tickets/${ticketId}/status`, { status }),
+    updateTicketPriority: (ticketId, priority) => customerApi.put(`/support/tickets/${ticketId}/priority`, { priority }),
+    addTicketMessage: (ticketId, message) => customerApi.post(`/support/tickets/${ticketId}/messages`, { message }),
+    getTicketMessages: (ticketId) => customerApi.get(`/support/tickets/${ticketId}/messages`),
+    askAiAssistant: (data) => customerApi.post('/support/ai/assist', data),
+    getAiModels: () => customerApi.get('/support/ai/models'),
+    getAiModelStats: () => customerApi.get('/support/ai/models/stats'),
+    updateAiModel: (model) => customerApi.put('/support/ai/models/current', { model })
 };
 
 // =============================================
