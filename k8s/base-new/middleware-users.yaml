@@ -1,0 +1,9 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: strip-users
+  namespace: blog-staging
+spec:
+  stripPrefix:
+    prefixes:
+      - /users

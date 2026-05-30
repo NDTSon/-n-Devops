@@ -1,0 +1,10 @@
+resources:
+  - namespace.yaml
+  - ../../base
+  - ../../hpa/user-hpa.yaml
+  - ../../hpa/blog-hpa.yaml
+
+namespace: prod
+
+patches:
+  - path: patch-replicas-prod.yaml

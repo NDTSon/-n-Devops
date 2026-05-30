@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blog-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: blog-service
+  template:
+    metadata:
+      labels:
+        app: blog-service
+    spec:
+      containers:
+        - name: blog-service
+          image: ndtson/blog-service:latest
+          ports:
+            - containerPort: 8082
+          env:
+            - name: SERVER_PORT
+              value: "8082"
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://blog-db:5432/blog_service_db
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTGRES_USER
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTGRES_PASSWORD
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: JWT_SECRET
+            - name: FILE_SERVICE_URL
+              value: http://file-service:8083
+            - name: USER_SERVICE_URL
+              value: http://user-service:8081
+            - name: INTERACTION_SERVICE_URL
+              value: http://interaction-service:8086
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            tcpSocket:
+              port: 8082
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          readinessProbe:
+            tcpSocket:
+              port: 8082
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          volumeMounts:
+            - name: uploads
+              mountPath: /app/uploads
+      volumes:
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: uploads-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: blog-service
+spec:
+  selector:
+    app: blog-service
+  ports:
+    - port: 8082
+      targetPort: 8082

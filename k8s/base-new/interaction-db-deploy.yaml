@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: interaction-db
+  namespace: blog-staging
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: interaction-db
+  template:
+    metadata:
+      labels:
+        app: interaction-db
+    spec:
+      containers:
+        - name: interaction-db
+          image: postgres:18-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: interaction_service_db
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: POSTGRES_PASSWORD

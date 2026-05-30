@@ -1,0 +1,67 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: blog-ingress
+  namespace: blog-staging
+  annotations:
+    traefik.ingress.kubernetes.io/router.middlewares: blog-staging-strip-users@kubernetescrd
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: blog.local
+      http:
+        paths:
+
+          # USER SERVICE
+          - path: /users
+            pathType: Prefix
+            backend:
+              service:
+                name: user-service
+                port:
+                  number: 8081
+
+          # BLOG SERVICE
+          - path: /blogs
+            pathType: Prefix
+            backend:
+              service:
+                name: blog-service
+                port:
+                  number: 8082
+
+          # FILE SERVICE
+          - path: /files
+            pathType: Prefix
+            backend:
+              service:
+                name: file-service
+                port:
+                  number: 8083
+
+          # INTERACTION SERVICE
+          - path: /interactions
+            pathType: Prefix
+            backend:
+              service:
+                name: interaction-service
+                port:
+                  number: 8086
+
+          # CUSTOMER SERVICE
+          - path: /customers
+            pathType: Prefix
+            backend:
+              service:
+                name: customer-service
+                port:
+                  number: 8087
+
+          # FRONTEND (UI)
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80

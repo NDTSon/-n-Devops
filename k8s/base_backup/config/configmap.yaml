@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  APP_BASE_URL: http://frontend
+  AI_BASE_URL: https://generativelanguage.googleapis.com/v1beta/openai
+  AI_MODEL: ""
+  AI_CHAT_PATH: /chat/completions
+  TZ: Asia/Ho_Chi_Minh
+  SPRING_MAIL_HOST: smtp.gmail.com
+  SPRING_MAIL_PORT: "587"

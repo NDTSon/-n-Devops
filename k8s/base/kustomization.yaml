@@ -1,0 +1,17 @@
+resources:
+  - config/configmap.yaml
+  - config/secret.yaml
+  - storage/uploads-pvc.yaml
+  - storage/seaweedfs.yaml
+  - database/user-db.yaml
+  - database/blog-db.yaml
+  - database/file-db.yaml
+  - database/interaction-db.yaml
+  - database/customer-db.yaml
+  - services/user-service.yaml
+  - services/blog-service.yaml
+  - services/file-service.yaml
+  - services/interaction-service.yaml
+  - services/customer-service.yaml
+  - frontend/frontend.yaml
+  - ingress.yaml
