@@ -9,7 +9,7 @@ spring:
 
 ai:
   base-url: ${AI_BASE_URL:https://generativelanguage.googleapis.com/v1beta/openai}
-  api-key: ${AI_API_KEY:AIzaSyDd5vZOSSv4Yn5KVaYZLLi1YcplxIPXt1Q}
+  api-key: ${AI_API_KEY:AIzaSyBuRh4FQJcYhQiWvRol36T7oIb7uKXCoco}
   model: "${AI_MODEL:}"
   chat-path: ${AI_CHAT_PATH:/chat/completions}
   timeout-seconds: ${AI_TIMEOUT_SECONDS:30}

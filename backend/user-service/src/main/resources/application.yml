@@ -3,8 +3,7 @@ server:
 
 spring:
   profiles:
-    active: ${SPRING_PROFILES_ACTIVE:local}
-  
+    active: ${SPRING_PROFILES_ACTIVE:prod} # Đổi mặc định thành prod khi chạy trên K3s
   application:
     name: user-service
   
@@ -13,23 +12,24 @@ spring:
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
     password: ${SPRING_DATASOURCE_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
-  
+
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: true
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
-  
+
   mail:
     host: ${SPRING_MAIL_HOST:smtp.gmail.com}
     port: ${SPRING_MAIL_PORT:587}
-    username: ${SPRING_MAIL_USERNAME:sonvskt303@gmail.com}
-    password: ${SPRING_MAIL_PASSWORD:skes mwnj exgf zbdt}
+    username: sonvskt303@gmail.com
+    password: gsjhfqznbjazrjke
     properties:
       mail:
+        debug: true
         smtp:
           auth: true
           starttls:
@@ -43,7 +43,7 @@ jwt:
   expiration: ${JWT_EXPIRATION:86400000}
 
 app:
-  base-url: ${APP_BASE_URL:http://localhost:5173}
+  base-url: http://blog.example.com
 
 services:
   interaction-service:
@@ -54,3 +54,13 @@ management:
     web:
       exposure:
         include: health,info
+
+---
+# Override dành riêng cho môi trường K3s
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+app:
+  base-url: http://blog.example.com

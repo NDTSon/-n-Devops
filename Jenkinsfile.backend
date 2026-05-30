@@ -1,0 +1,139 @@
+pipeline {
+    agent any
+
+    environment {
+        // Harbor config
+        REGISTRY = "core.harbor.domain" // Thay bằng IP/Domain Harbor của bạn
+        HARBOR_CREDENTIALS_ID = "harbor-creds"
+        
+        // SonarQube config
+        SONARQUBE_SERVER = "sonarqube-server"
+        
+        // GitOps config
+        GITOPS_REPO = "https://gitlab.com/sonndt/app-gitops.git"
+        GIT_CREDENTIALS_ID = "gitlab-creds"
+    }
+
+    stages {
+        stage('Checkout Source') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build Changed Services') {
+            matrix {
+                axes {
+                    axis {
+                        name 'SERVICE_NAME'
+                        values 'user-service', 'blog-service', 'customer-service', 'file-service', 'interaction-service'
+                    }
+                }
+                stages {
+                    stage('Check Changes') {
+                        steps {
+                            script {
+                                // So sánh commit hiện tại với commit trước đó để tìm ra thư mục nào bị thay đổi
+                                // Nếu là lần build đầu tiên (không có GIT_PREVIOUS_COMMIT), mặc định build tất cả
+                                def changes = ""
+                                if (env.GIT_PREVIOUS_COMMIT) {
+                                    changes = sh(script: "git diff --name-only ${env.GIT_PREVIOUS_COMMIT} ${env.GIT_COMMIT} | grep '^backend/${SERVICE_NAME}/' || true", returnStdout: true).trim()
+                                } else {
+                                    changes = "first-build-run-all"
+                                }
+                                
+                                if (changes != "") {
+                                    env.HAS_CHANGES = 'true'
+                                    echo "Phát hiện thay đổi ở ${SERVICE_NAME}. Đang tiến hành Build & Deploy!"
+                                } else {
+                                    env.HAS_CHANGES = 'false'
+                                    echo "Không có thay đổi nào ở ${SERVICE_NAME}. Bỏ qua..."
+                                }
+                            }
+                        }
+                    }
+
+                    stage('Build Application') {
+                        when { environment name: 'HAS_CHANGES', value: 'true' }
+                        steps {
+                            dir("backend/${SERVICE_NAME}") {
+                                sh 'mvn clean package -DskipTests'
+                            }
+                        }
+                    }
+
+                    stage('Unit Test') {
+                        when { environment name: 'HAS_CHANGES', value: 'true' }
+                        steps {
+                            dir("backend/${SERVICE_NAME}") {
+                                sh 'mvn test'
+                            }
+                        }
+                    }
+
+                    stage('SonarQube Scan') {
+                        when { environment name: 'HAS_CHANGES', value: 'true' }
+                        steps {
+                            dir("backend/${SERVICE_NAME}") {
+                                withSonarQubeEnv(env.SONARQUBE_SERVER) {
+                                    sh 'mvn sonar:sonar'
+                                }
+                            }
+                        }
+                    }
+
+                    stage('Docker Build') {
+                        when { environment name: 'HAS_CHANGES', value: 'true' }
+                        steps {
+                            dir("backend/${SERVICE_NAME}") {
+                                script {
+                                    env.IMAGE_NAME = "blog-platform/${SERVICE_NAME}"
+                                    env.IMAGE_TAG = "${env.BUILD_NUMBER}"
+                                }
+                                sh "docker build -t ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG} ."
+                            }
+                        }
+                    }
+
+                    stage('Push Docker Image') {
+                        when { environment name: 'HAS_CHANGES', value: 'true' }
+                        steps {
+                            withCredentials([usernamePassword(credentialsId: env.HARBOR_CREDENTIALS_ID, passwordVariable: 'HARBOR_PASSWORD', usernameVariable: 'HARBOR_USERNAME')]) {
+                                sh "echo \$HARBOR_PASSWORD | docker login ${REGISTRY} -u \$HARBOR_USERNAME --password-stdin"
+                                sh "docker push ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
+                            }
+                        }
+                    }
+
+                    stage('Update GitOps Repo') {
+                        when { environment name: 'HAS_CHANGES', value: 'true' }
+                        steps {
+                            withCredentials([usernamePassword(credentialsId: env.GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
+                                sh """
+                                    // Tạo thư mục tạm để tránh xung đột khi chạy Matrix song song
+                                    mkdir -p /tmp/${SERVICE_NAME}-${BUILD_NUMBER}
+                                    cd /tmp/${SERVICE_NAME}-${BUILD_NUMBER}
+                                    
+                                    git clone https://${GIT_USERNAME}:${GIT_PASSWORD}@gitlab.com/sonndt/app-gitops.git
+                                    cd app-gitops
+                                    
+                                    # Cập nhật version trong thư mục k8s/base/services của repo app-gitops
+                                    sed -i "s|image: .*${SERVICE_NAME}.*|image: ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}|g" k8s/base/services/${SERVICE_NAME}.yaml
+                                    
+                                    git config user.email "jenkins@example.com"
+                                    git config user.name "Jenkins CI"
+                                    git commit -am "Update image tag to ${IMAGE_TAG} for ${SERVICE_NAME}" || echo "No changes to commit"
+                                    git push origin main
+                                    
+                                    # Dọn dẹp
+                                    cd ../..
+                                    rm -rf /tmp/${SERVICE_NAME}-${BUILD_NUMBER}
+                                """
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

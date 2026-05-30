@@ -1,0 +1,91 @@
+pipeline {
+    agent any
+
+    environment {
+        // Harbor config
+        REGISTRY = "core.harbor.domain" // Thay bằng IP/Domain Harbor của bạn
+        HARBOR_CREDENTIALS_ID = "harbor-creds"
+        IMAGE_NAME = "blog-platform/frontend"
+        IMAGE_TAG = "${env.BUILD_NUMBER}"
+        
+        // SonarQube config
+        SONARQUBE_SERVER = "sonarqube-server"
+        
+        // GitOps config
+        GITOPS_REPO = "https://gitlab.com/sonndt/app-gitops.git"
+        GIT_CREDENTIALS_ID = "gitlab-creds"
+    }
+
+    stages {
+        stage('Checkout Source') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('NPM Install & Build') {
+            steps {
+                dir('frontend') {
+                    // Cần cài NodeJS plugin trên Jenkins hoặc dùng image node
+                    sh 'npm ci'
+                    sh 'npm run build'
+                }
+            }
+        }
+
+        stage('SonarQube Scan') {
+            steps {
+                dir('frontend') {
+                    withSonarQubeEnv(env.SONARQUBE_SERVER) {
+                        // Phải đảm bảo có file sonar-project.properties trong thư mục frontend
+                        sh '/opt/sonar-scanner/bin/sonar-scanner' 
+                    }
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 1, unit: 'HOURS') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                dir('frontend') {
+                    sh "docker build -t ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG} ."
+                }
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: env.HARBOR_CREDENTIALS_ID, passwordVariable: 'HARBOR_PASSWORD', usernameVariable: 'HARBOR_USERNAME')]) {
+                    sh "echo \$HARBOR_PASSWORD | docker login ${REGISTRY} -u \$HARBOR_USERNAME --password-stdin"
+                    sh "docker push ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}"
+                }
+            }
+        }
+
+        stage('Update GitOps Repo') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: env.GIT_CREDENTIALS_ID, passwordVariable: 'GIT_PASSWORD', usernameVariable: 'GIT_USERNAME')]) {
+                    sh """
+                        git clone https://${GIT_USERNAME}:${GIT_PASSWORD}@gitlab.com/sonndt/app-gitops.git
+                        cd app-gitops
+                        
+                        # Cập nhật version trong thư mục k8s/base/frontend của repo app-gitops
+                        sed -i "s|image: .*frontend.*|image: ${REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}|g" k8s/base/frontend/frontend.yaml
+                        
+                        git config user.email "jenkins@example.com"
+                        git config user.name "Jenkins CI"
+                        git commit -am "Update image tag to ${IMAGE_TAG} for frontend" || echo "No changes to commit"
+                        git push origin main
+                    """
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,15 @@
+server:
+  port: 8087
+
+spring:
+  datasource:
+    url: jdbc:postgresql://customer-db:5432/customer_service_db
+    username: postgres
+    password: postgres
+
+ai:
+  base-url: https://generativelanguage.googleapis.com/v1beta/openai
+  api-key: AIzaSyBuRh4FQJcYhQiWvRol36T7oIb7uKXCoco
+  model: "gemini-pro" # Bạn nên điền model cụ thể nếu cần
+  chat-path: /chat/completions
+  timeout-seconds: 30

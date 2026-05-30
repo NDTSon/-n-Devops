@@ -1,0 +1,21 @@
+server:
+  port: 8082
+
+spring:
+  datasource:
+    # Trỏ về Service Name của DB trong cụm K8s
+    url: jdbc:postgresql://blog-db:5432/blog_service_db
+    username: postgres
+    password: postgres
+
+services:
+  file-service:
+    url: http://file-service:8083
+  user-service:
+    url: http://user-service:8081
+  interaction-service:
+    url: http://interaction-service:8086
+
+file:
+  service:
+    url: http://file-service:8083

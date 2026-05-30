@@ -1,0 +1,14 @@
+server:
+  port: 8086
+
+spring:
+  datasource:
+    url: jdbc:postgresql://interaction-db:5432/interaction_service_db
+    username: postgres
+    password: postgres
+
+services:
+  user-service:
+    url: http://user-service:8081
+  blog-service:
+    url: http://blog-service:8082
